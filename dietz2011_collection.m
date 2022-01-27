@@ -52,6 +52,7 @@ function [fine,fc,ild,env] = dietz2011(insig,fs,varargin)
     amt_disp('  determining ILD',flags.disp);
     ild = 20/kv.compression_power*log10(max(inoutsig_ild(:,:,2),1e-4)./max(inoutsig_ild(:,:,1),1e-4));
 end
+
 %% arg_dietz2011_interauralfunctions.m
 
 function definput=arg_dietz2011_interauralfunctions(definput)

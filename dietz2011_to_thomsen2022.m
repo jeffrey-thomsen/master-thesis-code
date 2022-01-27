@@ -11,7 +11,7 @@ flow = 50;
 fhigh = 5000;
 
 tau_cycles = 5;
-%% Gammatone+ILD LP filtering
+%% Gammatone filtering
 % find the center frequencies used in the filterbank, 1 ERB spacing
 fc = erbspacebw(flow, fhigh, 1, []);
 
@@ -40,7 +40,7 @@ outp.ipd_lp = angle(lowpass(outp.itf,a));
 % eq. 7 in Dietz (2011)
 outp.ic = interaural_vector_strength(outp.itf, tau, fs);
 
-%% ILD calculation
+%% ILD LP filtering + calculation
 % ILD filter
 % low pass filter with a fixed cutoff frequency for every frequency channel
 [b,a] = butter(2,30/(fs/2),'low');
@@ -64,7 +64,10 @@ itd_unwrapped = ...
     dietz2011_unwrapitd(outp.itd_lp,ild,outp.f_inst,2.5); % develop own
 
 %% ITD to azimuth mapping (need to convert to IPD)
+lookup = itd2angle_lookuptable(); % this is where my training signals go in
 angl=itd2angle(itd_unwrapped,lookup);
+
+% this is itd2angle.m:
 % phi = zeros(size(itd));
 % for n = 1:size(itd,2)
 %     % by calling the output S and MU, phi is z-scored, thus improving the fitting
@@ -89,6 +92,8 @@ angl_ivs_weighted = ...
 % sig_competingtalkers
 % auditoryfilterbank
 % hohmann2002_filter and hohmann2002_process
+% itd2angle_lookuptable
+% itd2angle
 
 % lowpass
 function outsig = lowpass(sig, a)
