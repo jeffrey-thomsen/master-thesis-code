@@ -1,7 +1,7 @@
 function processedSignal = blockFeedingRoutine(testSignal, ...
   BlockFeedingParameters, AlgorithmParameters)
 
-    if nargin > 1
+    if nargin > 1 && exist('BlockFeedingParameters.blockLength','var')
         blockLength = BlockFeedingParameters.blockLength;
     else
         blockLength = 100;
@@ -15,7 +15,8 @@ function processedSignal = blockFeedingRoutine(testSignal, ...
     processedSignal = zeros(size(testSignal));
     for iBlock=1:nBlocks
         signalIndices = round((1:blockLength)+(iBlock-1)*blockLength);
-        processedSignal(signalIndices,:) = ...
-            speechEnhancement(testSignal(signalIndices,:));
+        [processedSignal(signalIndices,:), AlgorithmParameters] = ...
+            speechEnhancement(testSignal(signalIndices,:), ...
+                AlgorithmParameters);
     end
 end
