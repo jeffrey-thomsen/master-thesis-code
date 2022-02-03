@@ -1,0 +1,8 @@
+function processedSignal = speechEnhancement(inputSignal)
+    deconposedSubbandSignals = subbandDecomposition(inputSignal);
+
+    [sigmaDesired, deltaDesired, snrDesired] = ...
+        periodicityAnalysis(inputSignal);
+
+    
+end

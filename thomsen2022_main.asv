@@ -1,0 +1,11 @@
+%% Start/Simulation interface
+
+msgbox('Hi, you are running the Thomsen2022 speech enhancement algorithm!')
+
+TestSignalParameters = ;
+BlockFeedingParameters
+%% Test signal generator
+
+testSignal = testSignalGenerator(TestSignalParameters);
+%% Block-feeding routine
+

@@ -1,0 +1,38 @@
+%% Main function to generate tests
+function tests = basicTest
+tests = functiontests(localfunctions);
+end
+%% Test default testSignalGenerator signal output length
+function testDefaultTestSignalGeneratorSignalOutputLength(testCase)
+testSignal = testSignalGenerator;
+verifyEqual(testCase, length(testSignal), 1001, "RelTol", 0.01)
+verifyLessThanOrEqual(testCase, length(testSignal), 1000)
+verifySize(testCase,testSignal,)
+end
+%% Test predefined testSignalGenerator signal output length
+function testPredefinedTestSignalGeneratorSignalOutputLength(testCase)
+nSamples = 3000;
+TestSignalParameters.nSamples = nSamples;
+testSignal = testSignalGenerator(TestSignalParameters);
+assert(length(testSignal)==nSamples)
+end
+%% Test speechEnhancement output equal input
+function testSpeechEnhancementOutputEqualInput(testCase)
+input = rand(10000,2)-0.5;
+output = speechEnhancement(input);
+assert(isequal(output,input))
+end
+%% Test blockFeedingRountine output equal input
+function testBlockFeedingRoutineOutputEqualInput(testCase)
+input = rand(10000,2)-0.5;
+BlockFeedingParameters.blockLength = 100;
+output = blockFeedingRoutine(input, BlockFeedingParameters);
+assert(isequal(output,input))
+end
+%% Test blockFeedingRountine output equal input 1 sample at a time
+function testBlockFeedingRoutineOutputEqualInput1SampleAtATime(testCase)
+input = rand(10000,2)-0.5;
+BlockFeedingParameters.blockLength = 1;
+output = blockFeedingRoutine(input, BlockFeedingParameters);
+assert(isequal(output,input))
+end
