@@ -1,0 +1,3 @@
+function = calcSNR()
+
+end
