@@ -1,3 +1,7 @@
+% These are the unit tests used for the development of the Thomsen2022
+% speech enhancement algorithm. The test suite is run by executing
+% "runtests" in MATLAB in the project folder.
+
 %% Main function to generate tests
 function tests = testSuite
 tests = functiontests(localfunctions);
@@ -60,6 +64,7 @@ end
 
 function testConstructGammatoneFilterbankExecutes(testCase)
 % test if constructGammatoneFilterbank.m correctly outputs 2 structs
+% to contain the fiter parameters of the analysis and synthesis filterbank
     
     % Setup
     Parameters = AlgorithmParametersConstructor();
@@ -103,7 +108,7 @@ end
 
 function testGammatoneFilterbankInAlgorithm(testCase)
 % test if filterbank does near-perfect reconstruction of signal within the
-% algorithm framework
+% speech enhancement algorithm framework
     
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();

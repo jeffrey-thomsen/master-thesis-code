@@ -1,3 +1,9 @@
+% Divide a binaural signal into blocks reducing memory load and run the
+% Thomsen2022 speech enhancement algorithm on each block.
+% Block length can also be chosen to be 1 to showcase cauality of the
+% algorithm.
+% testSignal - Nx2 matrix containing real-valued binaural input signal
+% processedSignal - Nx2 matrix with the real-valued processed signal
 function processedSignal = blockFeedingRoutine(testSignal, ...
   BlockFeedingParameters, AlgorithmParameters)
 
@@ -6,7 +12,8 @@ function processedSignal = blockFeedingRoutine(testSignal, ...
     else
         blockLength = 100;
     end
-    assert(blockLength<length(testSignal))
+    assert(blockLength<length(testSignal), ...
+        "Block length must be shorter than signal")
     nBlocks = floor(length(testSignal)/blockLength);
 
     

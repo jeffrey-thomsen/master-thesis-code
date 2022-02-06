@@ -1,12 +1,17 @@
+% Periodicity analysis stage of the Thomsen2022 speech enhancement
+% algorithm. Uses a set of binaural signals that has been decomposed by a
+% gammatone filterbank and returns Sigma, Delta and SNR values for each
+% subband sample at which a periodic component was detected. The frequency
+% range for the periodicity analysis is defined in p0SearchRange
 function [sigma, delta, snr] = ...
     periodicityAnalysis(subbandSignals, AlgorithmParameters)
 
     % convert p0 frequency search range to number of samples vector
-    p0searchRangeHz = AlgorithmParameters.p0SearchRangeHz;
+    p0SearchRangeHz = AlgorithmParameters.p0SearchRangeHz;
     samplingRateHz = AlgorithmParameters.GammatoneParameters.samplingRateHz;
 
-    nMinSamplesP0Detect = floor(samplingRateHz/p0searchRangeHz(2));
-    nMaxSamplesP0Detect = ceil(samplingRateHz/p0searchRangeHz(1));
+    nMinSamplesP0Detect = floor(samplingRateHz/p0SearchRangeHz(2));
+    nMaxSamplesP0Detect = ceil(samplingRateHz/p0SearchRangeHz(1));
     p0DetectSamplesVector = nMinSamplesP0Detect:nMaxSamplesP0Detect;
     nP0DetectSamples = length(p0DetectSamplesVector);
 

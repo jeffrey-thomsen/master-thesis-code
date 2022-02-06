@@ -1,4 +1,29 @@
-%% First, create a filterbank analyzer as in Part I %%%
+% This script has been adapted from the Auditory Modeling Toolbox to demo
+% the Hohmann2002 gammatone filterbank working only with the code used in 
+% the Thomsen2022 speech enhancement algorithm. The original can bo found
+% under the following link:
+% http://amtoolbox.org/amt-1.1.0/doc/demos/demo_hohmann2002.php
+%
+% Reference:
+% Piotr Majdak, Clara Hollomey, and Robert Baumgartner. "AMT 1.0: The 
+% toolbox for reproducible research in auditory modeling." submitted to 
+% Acta Acustica (2021).
+% https://amtoolbox.org/
+
+%%
+% Shows how to use the gammatone filterbank from Hohmann(2002)
+%
+%   This Example demonstrates how to create and how to use the
+%   combined analysis-synthesis Filterbank system.
+%
+%   Figure 4: Figure 4 shows the impulse response of the analysis-synthesis system in the time domain
+%
+%   Figure 5: Figure 5 shows shows its frequency response
+%
+%   See also: exp_hohmann2002 hohmann2002 hohmann2002_process
+
+
+%% First, create a filterbank analyzer %%%
 
 flow =    70;
 fhigh =  6700;

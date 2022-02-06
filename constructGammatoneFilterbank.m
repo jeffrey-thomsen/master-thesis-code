@@ -1,3 +1,11 @@
+% Generates gammatone analysis and synthesis filterbank according to
+% Hohmann2002
+% Parameters - struct containing all parameters needed to define the
+% filterbank
+% analyzer - struct containing parameters and states of the analysis
+% filterbankd
+% synthesizer - struct containing parameters and states of the synthesis
+% filterbankd
 function [analyzer, synthesizer] = constructGammatoneFilterbank(Parameters)
 
     fLow = Parameters.fLow;
