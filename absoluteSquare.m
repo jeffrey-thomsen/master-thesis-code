@@ -1,3 +1,0 @@
-function = absoluteSquare()
-
-end

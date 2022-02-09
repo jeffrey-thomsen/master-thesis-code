@@ -13,8 +13,10 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.GammatoneParameters = GammatoneParameters;
 
     AlgorithmParameters.p0SearchRangeHz = [100 500]; % Bruemann2018
+    AlgorithmParameters.snrLPFilterTau = 0.04; % Bruemann2018
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
     AlgorithmParameters.snrThresholdInDb = 0;
+
     AlgorithmParameters.Cancellation = true;
     AlgorithmParameters.Enhancement = false;
     
@@ -25,13 +27,18 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     FilterStates.Gammatone.analyzer = analyzer;
     FilterStates.Gammatone.synthesizer = synthesizer;
 
+    AlgorithmParameters.GammatoneParameters.nBands = ...
+        length(FilterStates.Gammatone.analyzer.filters);
+
     %% preallocate states for all filters
-    FilterStates.sigmaDeltaNormLP = 0;
+    FilterStates.sigmaNormLP = 0;
+    FilterStates.deltaNormLP = 0;
     FilterStates.itfLP = 0;
     FilterStates.ildLP = 0;
     FilterStates.ivsNumeratorLP = 0;
     FilterStates.ivsDenominatorLP = 0;
-
+    
+    %% generate separate set for each channel
     AlgorithmParameters.L.FilterStates = FilterStates;
     AlgorithmParameters.R.FilterStates = FilterStates;
 

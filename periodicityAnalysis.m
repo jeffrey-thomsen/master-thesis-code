@@ -3,43 +3,74 @@
 % gammatone filterbank and returns Sigma, Delta and SNR values for each
 % subband sample at which a periodic component was detected. The frequency
 % range for the periodicity analysis is defined in p0SearchRange
-function [sigma, delta, snr] = ...
-    periodicityAnalysis(subbandSignals, AlgorithmParameters)
+function [sigmaCells, deltaCells, snrCells, ...
+  p0CandidateSampleIndexVectorCells, AlgorithmParameters] = ...
+  periodicityAnalysis(subbandSignalArray, AlgorithmParameters)
 
-    % convert p0 frequency search range to number of samples vector
+    % convert p0 frequency search range in Hz into number of samples
     p0SearchRangeHz = AlgorithmParameters.p0SearchRangeHz;
     samplingRateHz = AlgorithmParameters.GammatoneParameters.samplingRateHz;
 
-    nMinSamplesP0Detect = floor(samplingRateHz/p0SearchRangeHz(2));
-    nMaxSamplesP0Detect = ceil(samplingRateHz/p0SearchRangeHz(1));
-    p0DetectSamplesVector = nMinSamplesP0Detect:nMaxSamplesP0Detect;
-    nP0DetectSamples = length(p0DetectSamplesVector);
+    nMinSamplesP0Detection = floor(samplingRateHz/p0SearchRangeHz(2));
+    nMaxSamplesP0Detection = ceil(samplingRateHz/p0SearchRangeHz(1));
+    p0SearchRangeSamplesVector = ...
+        (nMinSamplesP0Detection:nMaxSamplesP0Detection)';
 
-    % calculate normalized SNR
-    norm.L = sign(subbandSignals.L);
-    norm.R = sign(subbandSignals.R);
+    % normalize subband signals
+    normalizedSubbandSignalArray.L = sign(subbandSignalArray.L);
+    normalizedSubbandSignalArray.R = sign(subbandSignalArray.R);
+
+    % preallocate data structures for results
+    nBands = AlgorithmParameters.GammatoneParameters.nBands;
+    p0CandidateSampleIndexVectorCells.L = cell(1,nBands);
+    p0CandidateSampleIndexVectorCells.R = cell(1,nBands);
+    sigmaCells.L = cell(1,nBands);
+    sigmaCells.R = cell(1,nBands);
+    deltaCells.L = cell(1,nBands);
+    deltaCells.R = cell(1,nBands);
+    snrCells.L = cell(1,nBands);
+    snrCells.R = cell(1,nBands);
+
+    for iBand = 1:nBands
+        subbandSignal.L = subbandSignalArray.L(:,iBand);
+        subbandSignal.R = subbandSignalArray.R(:,iBand);
+        normalizedSubbandSignal.L = normalizedSubbandSignalArray.L(:,iBand);
+        normalizedSubbandSignal.R = normalizedSubbandSignalArray.R(:,iBand);
+        
+        % calculate normalized SNR
+        [normalizedSigma, normalizedDelta] = ...
+            calcSigmaDeltaBinaural(normalizedSubbandSignal, ...
+                p0SearchRangeSamplesVector, 'range');
     
-    [norm.sigma, norm.delta] = ...
-        calcSigmaDelta(norm, p0DetectSamplesVector);
-
-    norm = absoluteSquare(norm);
-
-    norm = LPFilter(norm);
-
-    norm.SNR = calcSNR(norm);
+        [normalizedSigma, normalizedDelta, AlgorithmParameters] = ...
+            absoluteSquareLPFilterBinaural(normalizedSigma, ...
+            normalizedDelta, AlgorithmParameters);
     
-    % intra-subband SNR peak detection
-    p0candidates = subbandSnrPeakDetection(norm.SNR);
+        normalizedSnr = calcSNRBinaural(normalizedSigma, normalizedDelta);
+        
+        % intra-subband SNR peak detection
+        p0CandidateSampleIndexVector = ...
+            subbandSnrPeakDetectionBinaural(normalizedSnr);
 
-    % calculate Sigmas, Deltas and SNR for p0 candidates
-    [p0Detected.sigma, p0Detected.delta] = ...
-        calcSigmaDelta(subbandSignals, p0candidates);
+        % calculate Sigmas, Deltas and SNR for p0 candidates
+        [p0CandidateSigma, p0CandidateDelta] = ...
+            calcSigmaDeltaBinaural(subbandSignal, ...
+            p0SearchRangeSamplesVector, 'discrete', ...
+            p0CandidateSampleIndexVector);
+    
+        p0CandidateSnr = calcSNRBinaural(p0CandidateSigma, p0CandidateDelta);
 
-    p0Detected.SNR = calcSNR(p0Detected);
+        % write into structs
+        p0CandidateSampleIndexVectorCells.L{iBand} = ...
+            p0CandidateSampleIndexVector.L;
+        p0CandidateSampleIndexVectorCells.R{iBand} = ...
+            p0CandidateSampleIndexVector.R;
+        sigmaCells.L{iBand} = p0CandidateSigma.L;
+        sigmaCells.R{iBand} = p0CandidateSigma.R;
+        deltaCells.L{iBand} = p0CandidateDelta.L;
+        deltaCells.R{iBand} = p0CandidateDelta.R;
+        snrCells.L{iBand} = p0CandidateSnr.L;
+        snrCells.R{iBand} = p0CandidateSnr.R;
+    end
 
-
-
-    snr = subbandSignals;
-    sigma = snr;
-    delta = sigma;
 end
