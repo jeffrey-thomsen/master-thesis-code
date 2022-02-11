@@ -7,13 +7,13 @@
 % left and right channel signals
 % subbandSignals - struct containing a set of complex-valued subband 
 % signals for the left and right channel
-function [subbandSignals, AlgorithmParameters] = ...
-  subbandDecompositionBinaural(inputSignal, AlgorithmParameters)
+function [subbandSignals, AlgorithmStates] = ...
+  subbandDecompositionBinaural(inputSignal, AlgorithmStates)
 
     % read the filter parameters and states for left and right channel
     % analysis filterbanks
-    analyzer.L = AlgorithmParameters.L.FilterStates.Gammatone.analyzer;
-    analyzer.R = AlgorithmParameters.R.FilterStates.Gammatone.analyzer;
+    analyzer.L = AlgorithmStates.L.GammatoneStates.analyzer;
+    analyzer.R = AlgorithmStates.R.GammatoneStates.analyzer;
     
     % decompose left and right channel binaural signals into frequency
     % subbands
@@ -24,7 +24,7 @@ function [subbandSignals, AlgorithmParameters] = ...
         subbandDecomposition(inputSignal(:,2), analyzer.R);
 
     % update filter parameters
-    AlgorithmParameters.L.FilterStates.Gammatone.analyzer = analyzer.L;
-    AlgorithmParameters.R.FilterStates.Gammatone.analyzer = analyzer.R;
+    AlgorithmStates.L.GammatoneStates.analyzer = analyzer.L;
+    AlgorithmStates.R.GammatoneStates.analyzer = analyzer.R;
 
 end

@@ -3,7 +3,7 @@ function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
 
     %% Filter variable definition
     tau = AlgorithmParameters.snrLPFilterTau;
-    fs = AlgorithmParameters.GammatoneParameters.samplingRateHz;
+    fs = AlgorithmParameters.Gammatone.samplingRateHz;
     T = 1/fs;
     a = exp(-(T/tau)); % filter constant a: (unit-less (seconds/seconds))
     %% Preallocation of output signal

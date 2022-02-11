@@ -1,4 +1,5 @@
 function AlgorithmParameters = AlgorithmParametersConstructor()
+    
     AlgorithmParameters = struct;
     
     GammatoneParameters.fLow = 70;
@@ -10,7 +11,7 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     GammatoneParameters.filterOrder = 4;
     GammatoneParameters.bandwidthFactor = 1.0;
 
-    AlgorithmParameters.GammatoneParameters = GammatoneParameters;
+    AlgorithmParameters.Gammatone = GammatoneParameters;
 
     AlgorithmParameters.p0SearchRangeHz = [100 500]; % Bruemann2018
     AlgorithmParameters.snrLPFilterTau = 0.04; % Bruemann2018
@@ -19,34 +20,5 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
 
     AlgorithmParameters.Cancellation = true;
     AlgorithmParameters.Enhancement = false;
-    
-    %% construct gammatone filterbanks
-    [analyzer, synthesizer] = ...
-        constructGammatoneFilterbank(GammatoneParameters);
-    
-    FilterStates.Gammatone.analyzer = analyzer;
-    FilterStates.Gammatone.synthesizer = synthesizer;
 
-    AlgorithmParameters.GammatoneParameters.nBands = ...
-        length(FilterStates.Gammatone.analyzer.filters);
-
-    %% preallocate states for all filters
-    FilterStates.sigmaNormLP = 0;
-    FilterStates.deltaNormLP = 0;
-    FilterStates.itfLP = 0;
-    FilterStates.ildLP = 0;
-    FilterStates.ivsNumeratorLP = 0;
-    FilterStates.ivsDenominatorLP = 0;
-    
-    %% generate separate set for each channel
-    AlgorithmParameters.L.FilterStates = FilterStates;
-    AlgorithmParameters.R.FilterStates = FilterStates;
-
-    AlgorithmParameters.L.p0DetectionFIFO = 0;
-    AlgorithmParameters.R.p0DetectionFIFO = 0;
-
-    AlgorithmParameters.L.ivsGradientPrevVal = 0;
-    AlgorithmParameters.R.ivsGradientPrevVal = 0;
-
-    
 end

@@ -72,7 +72,7 @@ function testConstructGammatoneFilterbankExecutes(testCase)
     % Setup
     Parameters = AlgorithmParametersConstructor();
     % Exercise
-    [analyzer, synthesizer] = constructGammatoneFilterbank(Parameters.GammatoneParameters);
+    [analyzer, synthesizer] = constructGammatoneFilterbank(Parameters.Gammatone);
     % Verify
     verifyClass(testCase,analyzer,"struct")
     verifyClass(testCase,synthesizer,"struct")
@@ -84,10 +84,10 @@ function testGammatoneFilterbank(testCase)
     % Setup
     Parameters = AlgorithmParametersConstructor();
     % extract expected delay
-    delaySeconds = Parameters.GammatoneParameters.desiredDelayInSeconds;
-    samplingrateHz = Parameters.GammatoneParameters.samplingRateHz;
+    delaySeconds = Parameters.Gammatone.desiredDelayInSeconds;
+    samplingrateHz = Parameters.Gammatone.samplingRateHz;
     delaySamples = round(delaySeconds * samplingrateHz);
-    [analyzer, synthesizer] = constructGammatoneFilterbank(Parameters.GammatoneParameters);
+    [analyzer, synthesizer] = constructGammatoneFilterbank(Parameters.Gammatone);
     % create test signal
     input = rand(10000,1)-0.5;
 
@@ -115,14 +115,16 @@ function testGammatoneFilterbankInAlgorithm(testCase)
     
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
     % disable processing stage
     AlgorithmParameters.Cancellation = false;
     AlgorithmParameters.Enhancement = false;
     % extract expected delay
     delaySeconds = ...
-        AlgorithmParameters.GammatoneParameters.desiredDelayInSeconds;
+        AlgorithmParameters.Gammatone.desiredDelayInSeconds;
     samplingrateHz = ...
-        AlgorithmParameters.GammatoneParameters.samplingRateHz;
+        AlgorithmParameters.Gammatone.samplingRateHz;
     delaySamples = round(delaySeconds * samplingrateHz);
     % create test signal
     input = rand(10000,2)-0.5;
@@ -130,7 +132,7 @@ function testGammatoneFilterbankInAlgorithm(testCase)
     
     % Exercise
     [output, ~] = ...
-        speechEnhancement(input, AlgorithmParameters);
+        speechEnhancement(input, AlgorithmParameters, AlgorithmStates);
     
     % Verify
     for ch=1:2
@@ -153,22 +155,24 @@ function testGammatoneFilterbankInBlockFeederDefault(testCase)
     % Setup
     BlockFeedingParameters = struct;
     AlgorithmParameters = AlgorithmParametersConstructor();
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
     % disable processing stage
     AlgorithmParameters.Cancellation = false;
     AlgorithmParameters.Enhancement = false;
     % extract expected delay
     delaySeconds = ...
-        AlgorithmParameters.GammatoneParameters.desiredDelayInSeconds;
+        AlgorithmParameters.Gammatone.desiredDelayInSeconds;
     samplingrateHz = ...
-        AlgorithmParameters.GammatoneParameters.samplingRateHz;
+        AlgorithmParameters.Gammatone.samplingRateHz;
     delaySamples = round(delaySeconds * samplingrateHz);
     % create test signal
     input = rand(10000,2)-0.5;
     input = testInputSignal(input);
 
     % Exercise
-    output = blockFeedingRoutine(input,BlockFeedingParameters,...
-        AlgorithmParameters);
+    output = blockFeedingRoutine(input, BlockFeedingParameters,...
+        AlgorithmParameters, AlgorithmStates);
     
     % Verify
     for ch=1:2
@@ -191,14 +195,16 @@ function testGammatoneFilterbankInBlockFeeder(testCase)
     % Setup
     BlockFeedingParameters.blockLength = 2000;
     AlgorithmParameters = AlgorithmParametersConstructor();
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
     % disable processing stage
     AlgorithmParameters.Cancellation = false;
     AlgorithmParameters.Enhancement = false;
     % extract expected delay
     delaySeconds = ...
-        AlgorithmParameters.GammatoneParameters.desiredDelayInSeconds;
+        AlgorithmParameters.Gammatone.desiredDelayInSeconds;
     samplingrateHz = ...
-        AlgorithmParameters.GammatoneParameters.samplingRateHz;
+        AlgorithmParameters.Gammatone.samplingRateHz;
     delaySamples = round(delaySeconds * samplingrateHz);
     % create test signal
     input = rand(10000,2)-0.5;
@@ -206,7 +212,7 @@ function testGammatoneFilterbankInBlockFeeder(testCase)
 
     % Exercise
     output = blockFeedingRoutine(input,BlockFeedingParameters,...
-        AlgorithmParameters);
+        AlgorithmParameters, AlgorithmStates);
     
     % Verify
     for ch=1:2
@@ -229,14 +235,16 @@ function testGammatoneFilterbankInBlockFeeder1SampleAtATime(testCase)
     % Setup
     BlockFeedingParameters.blockLength = 1;
     AlgorithmParameters = AlgorithmParametersConstructor();
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
     % disable processing stage
     AlgorithmParameters.Cancellation = false;
     AlgorithmParameters.Enhancement = false;
     % extract expected delay
     delaySeconds = ...
-        AlgorithmParameters.GammatoneParameters.desiredDelayInSeconds;
+        AlgorithmParameters.Gammatone.desiredDelayInSeconds;
     samplingrateHz = ...
-        AlgorithmParameters.GammatoneParameters.samplingRateHz;
+        AlgorithmParameters.Gammatone.samplingRateHz;
     delaySamples = round(delaySeconds * samplingrateHz);
     % create test signal
     input = rand(10000,2)-0.5;
@@ -244,7 +252,7 @@ function testGammatoneFilterbankInBlockFeeder1SampleAtATime(testCase)
 
     % Exercise
     output = blockFeedingRoutine(input,BlockFeedingParameters,...
-        AlgorithmParameters);
+        AlgorithmParameters, AlgorithmStates);
     
     % Verify
     for ch=1:2
@@ -268,12 +276,14 @@ function testGammatoneFilterbankInBlockFeederCompare(testCase)
     % Setup
     BlockFeedingParameters.blockLength = 1;
     AlgorithmParameters = AlgorithmParametersConstructor();
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
     % disable processing stage
     AlgorithmParameters.Cancellation = false;
     AlgorithmParameters.Enhancement = false;
 
-    AlgorithmParametersBlock = AlgorithmParameters;
-    AlgorithmParametersBatch = AlgorithmParameters;
+    AlgorithmStatesBlock = AlgorithmStates;
+    AlgorithmStatesBatch = AlgorithmStates;
    
     % create test signal
     input = rand(10000,2)-0.5;
@@ -281,9 +291,9 @@ function testGammatoneFilterbankInBlockFeederCompare(testCase)
 
     % Exercise
     blockOutput = blockFeedingRoutine(input,BlockFeedingParameters,...
-        AlgorithmParametersBlock);
+        AlgorithmParameters, AlgorithmStatesBlock);
     [batchOutput, ~] = ...
-        speechEnhancement(input, AlgorithmParametersBatch);
+        speechEnhancement(input, AlgorithmParameters, AlgorithmStatesBatch);
     
     % Verify
     verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",10*eps)
@@ -300,34 +310,30 @@ function testPeriodicityAnalysis(testCase)
     
     % reduce number of frequency bands in the gammatone filterbank to
     % reduce computation time
-    AlgorithmParameters.GammatoneParameters.fHigh = 340;
-    [analyzer, synthesizer] = ...
-        constructGammatoneFilterbank(AlgorithmParameters.GammatoneParameters); 
-    Gammatone.analyzer = analyzer;
-    Gammatone.synthesizer = synthesizer;
-    AlgorithmParameters.GammatoneParameters.nBands = ...
-        length(Gammatone.analyzer.filters);
-    AlgorithmParameters.L.FilterStates.Gammatone = Gammatone;
-    AlgorithmParameters.R.FilterStates.Gammatone = Gammatone;
+    AlgorithmParameters.Gammatone.fHigh = 340;
+    
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
     
     inputSignal = testSignalGenerator;
-    [subbandSignalArray, AlgorithmParameters] = ...
-        subbandDecompositionBinaural(inputSignal, AlgorithmParameters);
+    [subbandSignalArray, AlgorithmStates] = ...
+        subbandDecompositionBinaural(inputSignal, AlgorithmStates);
 
     % Exercise
-    [sigma, delta, snr, p0CandidateSampleIndexVectors, AlgorithmParameters] = ...
-        periodicityAnalysis(subbandSignalArray, AlgorithmParameters);
+    [sigma, delta, snr, p0CandidateSampleIndexVectors, ~] =...
+        periodicityAnalysis(subbandSignalArray, AlgorithmParameters, ...
+        AlgorithmStates);
 
     % Verify
     p0SearchRangeHz = AlgorithmParameters.p0SearchRangeHz;
-    samplingRateHz = AlgorithmParameters.GammatoneParameters.samplingRateHz;
+    samplingRateHz = AlgorithmParameters.Gammatone.samplingRateHz;
     nMinSamplesP0Detection = floor(samplingRateHz/p0SearchRangeHz(2));
     nMaxSamplesP0Detection = ceil(samplingRateHz/p0SearchRangeHz(1));
     p0SearchRangeSamplesVector = ...
         (nMinSamplesP0Detection:nMaxSamplesP0Detection)';
     nP0Values = length(p0SearchRangeSamplesVector);
 
-    nBands = AlgorithmParameters.GammatoneParameters.nBands;
+    nBands = AlgorithmParameters.Gammatone.nBands;
     for iBand=1:nBands
         verifyLessThanOrEqual(testCase,p0CandidateSampleIndexVectors.L{iBand},...
             nP0Values)
@@ -422,16 +428,19 @@ function testAbsoluteSquareLPFilterBinaural(testCase)
     deltaIn.L = testSignalGenerator;
     deltaIn.R = testSignalGenerator;
     AlgorithmParameters = AlgorithmParametersConstructor();
-
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+    FilterStates.L = AlgorithmStates.L.ProcessingStates{1};
+    FilterStates.R = AlgorithmStates.R.ProcessingStates{1};
     % Exercise
-    [sigmaOut, deltaOut, AlgorithmParameters] = ...
-        absoluteSquareLPFilterBinaural(sigmaIn, deltaIn, AlgorithmParameters);
+    [sigmaOut, deltaOut, FilterStates] = ...
+        absoluteSquareLPFilterBinaural(sigmaIn, deltaIn, AlgorithmParameters, FilterStates);
 
     % Verify
-    verifyNotEqual(testCase,AlgorithmParameters.L.FilterStates.sigmaNormLP,0);
-    verifyNotEqual(testCase,AlgorithmParameters.R.FilterStates.sigmaNormLP,0);
-    verifyNotEqual(testCase,AlgorithmParameters.L.FilterStates.deltaNormLP,0);
-    verifyNotEqual(testCase,AlgorithmParameters.R.FilterStates.deltaNormLP,0);
+    verifyNotEqual(testCase,FilterStates.L.sigmaNormLP,0);
+    verifyNotEqual(testCase,FilterStates.R.sigmaNormLP,0);
+    verifyNotEqual(testCase,FilterStates.L.deltaNormLP,0);
+    verifyNotEqual(testCase,FilterStates.R.deltaNormLP,0);
     expectedSize = size(sigmaIn.L);
     verifySize(testCase,deltaIn.R,expectedSize)
     verifySize(testCase,sigmaOut.L,expectedSize)
@@ -447,7 +456,9 @@ function testFirstOrderLowPass(testCase)
 
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();
-    filterState = AlgorithmParameters.L.FilterStates.sigmaNormLP;
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+    filterState = AlgorithmStates.L.ProcessingStates{1}.sigmaNormLP;
     inputSignal = testSignalGenerator;
     inputSignal = inputSignal(:,1);
     
@@ -488,7 +499,9 @@ function testFirstOrderLowPassComplex(testCase)
 
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();
-    filterState = AlgorithmParameters.L.FilterStates.sigmaNormLP;
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+    filterState = AlgorithmStates.L.ProcessingStates{1}.sigmaNormLP;
     testSignal = testSignalGenerator;
     inputSignal = testSignal(:,1) + 1i*testSignal(:,2);
 
@@ -508,7 +521,9 @@ function testFirstOrderLowpassFilterStateRelay(testCase)
 % the filter state variable
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();
-    filterState = AlgorithmParameters.L.FilterStates.sigmaNormLP;
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+    filterState = AlgorithmStates.L.ProcessingStates{1}.sigmaNormLP;
     inputSignal = testSignalGenerator;
     inputSignal = inputSignal(:,1);
 

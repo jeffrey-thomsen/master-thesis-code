@@ -16,14 +16,15 @@ TestSignalParameters = struct;
 TargetAngleParameters = struct;
 BlockFeedingParameters = struct;
 AlgorithmParameters = AlgorithmParametersConstructor();
-
+[AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
 %% Test signal generator
 testSignal = testSignalGenerator;
 testSignal = testInputSignal(testSignal);
 
 %% Block-feeding routine
 processedSignal = blockFeedingRoutine(testSignal,BlockFeedingParameters,...
-    AlgorithmParameters);
+    AlgorithmParameters, AlgorithmStates);
 
 %% Evaluation
 

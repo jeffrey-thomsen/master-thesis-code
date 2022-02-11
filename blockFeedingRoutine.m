@@ -5,7 +5,7 @@
 % testSignal - Nx2 matrix containing real-valued binaural input signal
 % processedSignal - Nx2 matrix with the real-valued processed signal
 function processedSignal = blockFeedingRoutine(testSignal, ...
-  BlockFeedingParameters, AlgorithmParameters)
+  BlockFeedingParameters, AlgorithmParameters, AlgorithmStates)
 
     if nargin > 1 && exist('BlockFeedingParameters.blockLength','var')
         blockLength = BlockFeedingParameters.blockLength;
@@ -22,8 +22,8 @@ function processedSignal = blockFeedingRoutine(testSignal, ...
     processedSignal = zeros(size(testSignal));
     for iBlock=1:nBlocks
         signalIndices = round((1:blockLength)+(iBlock-1)*blockLength);
-        [processedSignal(signalIndices,:), AlgorithmParameters] = ...
+        [processedSignal(signalIndices,:), AlgorithmStates] = ...
             speechEnhancement(testSignal(signalIndices,:), ...
-                AlgorithmParameters);
+                AlgorithmParameters, AlgorithmStates);
     end
 end

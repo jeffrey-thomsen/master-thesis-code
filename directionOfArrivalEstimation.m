@@ -1,6 +1,6 @@
-function [azimuth, azDetectedIndexVectors, AlgorithmParameters] = ...
-    directionOfArrivalEstimation(subbandSignalArray, AlgorithmParameters)
+function [azimuth, azDetectedIndexVectors, AlgorithmStates] = ...
+    directionOfArrivalEstimation(subbandSignalArray, AlgorithmParameters, AlgorithmStates)
 
-centerFreqs = AlgorithmParameters.L.FilterStates.Gammatone.analyzer.center_frequencies_hz;
+centerFreqs = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
 azimuth = subbandSignalArray;
 end

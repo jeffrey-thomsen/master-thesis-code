@@ -7,13 +7,13 @@
 % and filter states for the gammatone synthesis filterbank for each the 
 % left and right channel signals
 % resynthesizedSignal - Nx2 matrix containing the real-valued binaural signal
-function [resynthesizedSignal, AlgorithmParameters] = ...
-  subbandResynthesisBinaural(subbandSignalArray, AlgorithmParameters)
+function [resynthesizedSignal, AlgorithmStates] = ...
+  subbandResynthesisBinaural(subbandSignalArray, AlgorithmStates)
     
     % read the filter parameters and states for left and right channel
     % synthesis filterbanks
-    synthesizer.L = AlgorithmParameters.L.FilterStates.Gammatone.synthesizer;
-    synthesizer.R = AlgorithmParameters.R.FilterStates.Gammatone.synthesizer;
+    synthesizer.L = AlgorithmStates.L.GammatoneStates.synthesizer;
+    synthesizer.R = AlgorithmStates.R.GammatoneStates.synthesizer;
     
     % resynthesize left and right channel binaural signals
     resynthesizedSignal = zeros(length(subbandSignalArray.L),2);
@@ -25,7 +25,7 @@ function [resynthesizedSignal, AlgorithmParameters] = ...
         subbandResynthesis(subbandSignalArray.R, synthesizer.R);
     
     % update filter parameters
-    AlgorithmParameters.L.FilterStates.Gammatone.synthesizer = synthesizer.L;
-    AlgorithmParameters.R.FilterStates.Gammatone.synthesizer = synthesizer.R;
+    AlgorithmStates.L.GammatoneStates.synthesizer = synthesizer.L;
+    AlgorithmStates.R.GammatoneStates.synthesizer = synthesizer.R;
     
 end
