@@ -1,8 +1,12 @@
 function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
-  filterState, AlgorithmParameters)
+  filterState, AlgorithmParameters, varargin)
 
     %% Filter variable definition
-    tau = AlgorithmParameters.snrLPFilterTau;
+    if ~isempty(varargin)
+        tau = varargin{1};
+    else
+        tau = AlgorithmParameters.snrLPFilterTau;
+    end
     fs = AlgorithmParameters.Gammatone.samplingRateHz;
     T = 1/fs;
     a = exp(-(T/tau)); % filter constant a: (unit-less (seconds/seconds))
