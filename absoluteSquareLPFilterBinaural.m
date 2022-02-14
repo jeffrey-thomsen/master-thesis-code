@@ -1,11 +1,13 @@
 function [sigma, delta, FilterStates] = ...
     absoluteSquareLPFilterBinaural(sigma, delta, AlgorithmParameters, FilterStates)
-
+        
+        % compute absolute squared values
         sigma.L = abs(sigma.L).^2;
         sigma.R = abs(sigma.R).^2;
         delta.L = abs(delta.L).^2;
         delta.R = abs(delta.R).^2;
     
+        % lowpass filter values for temporal smoothing
         [sigma.L, FilterStates.L.sigmaNormLP] ...
             = firstOrderLowPass(sigma.L, ...
             FilterStates.L.sigmaNormLP, AlgorithmParameters);

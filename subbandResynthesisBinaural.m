@@ -16,7 +16,7 @@ function [resynthesizedSignal, AlgorithmStates] = ...
     synthesizer.R = AlgorithmStates.R.GammatoneStates.synthesizer;
     
     % resynthesize left and right channel binaural signals
-    resynthesizedSignal = zeros(length(subbandSignalArray.L),2);
+    resynthesizedSignal = zeros(size(subbandSignalArray.L,1),2);
     
     [resynthesizedSignal(:,1), synthesizer.L] = ...
         subbandResynthesis(subbandSignalArray.L, synthesizer.L);

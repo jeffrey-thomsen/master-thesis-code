@@ -21,8 +21,8 @@ function testDefaultTestSignalGeneratorSignalOutputLength(testCase)
     % Exercise
     testSignal = testSignalGenerator;
     % Verify
-    verifyEqual(testCase, length(testSignal), 32001, "RelTol", 0.01)
-    verifyLessThanOrEqual(testCase, length(testSignal), 32000)
+    verifyEqual(testCase, size(testSignal,1), 32001, "RelTol", 0.01)
+    verifyLessThanOrEqual(testCase, size(testSignal,1), 32000)
     expectedSize = [32000 2];
     verifySize(testCase,testSignal,expectedSize)
 end
@@ -135,9 +135,10 @@ function testGammatoneFilterbankInAlgorithm(testCase)
         speechEnhancement(input, AlgorithmParameters, AlgorithmStates);
     
     % Verify
+    actualDelay = finddelay(input,output);
     for ch=1:2
         % actual delay should correspond to desired delay
-        actualDelay = finddelay(input,output);
+
         verifyEqual(testCase,actualDelay(ch),delaySamples);
 
         % largest cross-correlation coefficient should be significantly 
@@ -175,9 +176,10 @@ function testGammatoneFilterbankInBlockFeederDefault(testCase)
         AlgorithmParameters, AlgorithmStates);
     
     % Verify
+    actualDelay = finddelay(input,output);
     for ch=1:2
         % actual delay should correspond to desired delay
-        actualDelay = finddelay(input,output);
+
         verifyEqual(testCase,actualDelay(ch),delaySamples);
 
         % largest cross-correlation coefficient should be significantly 
@@ -188,7 +190,7 @@ function testGammatoneFilterbankInBlockFeederDefault(testCase)
     end
 end
 
-function testGammatoneFilterbankInBlockFeeder(testCase)
+function testGammatoneFilterbankInBlockFeederCustom(testCase)
 % test if filterbank does near-perfect reconstruction of signal within the
 % block feeding framework with custom block length
     
@@ -215,9 +217,10 @@ function testGammatoneFilterbankInBlockFeeder(testCase)
         AlgorithmParameters, AlgorithmStates);
     
     % Verify
+    actualDelay = finddelay(input,output);
     for ch=1:2
         % actual delay should correspond to desired delay
-        actualDelay = finddelay(input,output);
+
         verifyEqual(testCase,actualDelay(ch),delaySamples);
 
         % largest cross-correlation coefficient should be significantly 
@@ -247,7 +250,7 @@ function testGammatoneFilterbankInBlockFeeder1SampleAtATime(testCase)
         AlgorithmParameters.Gammatone.samplingRateHz;
     delaySamples = round(delaySeconds * samplingrateHz);
     % create test signal
-    input = rand(10000,2)-0.5;
+    input = rand(1000,2)-0.5;
     input = testInputSignal(input);
 
     % Exercise
@@ -255,16 +258,16 @@ function testGammatoneFilterbankInBlockFeeder1SampleAtATime(testCase)
         AlgorithmParameters, AlgorithmStates);
     
     % Verify
+    actualDelay = finddelay(input,output);
     for ch=1:2
         % actual delay should correspond to desired delay
-        actualDelay = finddelay(input,output);
         verifyEqual(testCase,actualDelay(ch),delaySamples);
 
         % largest cross-correlation coefficient should be significantly 
         % larger than second-largest
         sortedxCorr = sort(xcorr(input(:,ch),output(:,ch)));
         xcorrRatio = sortedxCorr(end)/sortedxCorr(end-1);
-        verifyGreaterThan(testCase,xcorrRatio,9.5)
+        verifyGreaterThan(testCase,xcorrRatio,7)
     end
 end
 
@@ -286,11 +289,11 @@ function testGammatoneFilterbankInBlockFeederCompare(testCase)
     AlgorithmStatesBatch = AlgorithmStates;
    
     % create test signal
-    input = rand(10000,2)-0.5;
+    input = rand(1000,2)-0.5;
     input = testInputSignal(input);
 
     % Exercise
-    blockOutput = blockFeedingRoutine(input,BlockFeedingParameters,...
+    blockOutput = blockFeedingRoutine(input, BlockFeedingParameters,...
         AlgorithmParameters, AlgorithmStatesBlock);
     [batchOutput, ~] = ...
         speechEnhancement(input, AlgorithmParameters, AlgorithmStatesBatch);
@@ -300,7 +303,7 @@ function testGammatoneFilterbankInBlockFeederCompare(testCase)
 end
 
 % Periodicity Analysis
-function testPeriodicityAnalysis(testCase)
+function testPeriodicityAnalysisExpectedSizes(testCase)
 % test if the periodicityAnalysis function returns p0 candidate index
 % values in the expected range and if the Sigma, Delta and SNR vectors all
 % have the expected length
@@ -315,7 +318,8 @@ function testPeriodicityAnalysis(testCase)
     [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
         AlgorithmStatesConstructor(AlgorithmParameters);
     
-    inputSignal = testSignalGenerator;
+    TestSignalParameters.nSamples = 1000;
+    inputSignal = testSignalGenerator(TestSignalParameters);
     [subbandSignalArray, AlgorithmStates] = ...
         subbandDecompositionBinaural(inputSignal, AlgorithmStates);
 
@@ -355,36 +359,77 @@ function testPeriodicityAnalysis(testCase)
     end
 end
 
-function testCalcSigmaDeltaBinauralRange(testCase)
+function testPeriodicityAnalysisInBlockFeederCompare(testCase)
+% test if periodicity analysis returns identical output signal and filter
+% states when run within the block feeding framework, running only one 
+% sample at a time, and when run as batch
+    
+    % Setup
+    BlockFeedingParameters.blockLength = 1;
+    AlgorithmParameters = AlgorithmParametersConstructor();
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+    AlgorithmStatesConstructor(AlgorithmParameters);
+
+    BlockStates = AlgorithmStates;
+    BatchStates = AlgorithmStates;
+   
+    % create test signal
+    input = rand(500,2)-0.5;
+    input = testInputSignal(input);
+
+    % Exercise
+    [blockOutput, BlockStates] = blockFeedingRoutine(input,...
+        BlockFeedingParameters, AlgorithmParameters, BlockStates);
+    [batchOutput, BatchStates] = ...
+        speechEnhancement(input, AlgorithmParameters, BatchStates);
+
+    % Verify
+    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",10*eps)
+    
+    verifyEqual(testCase,BlockStates,BatchStates,"AbsTol",1e-12)
+    
+end
+
+function testCalcSigmaDeltaBinauralRangeSizes(testCase)
 % test if Sigma/Delta range computation produces output of expected size
 % (length-of-signal x length-of-p0-vector) with complex binaural signal as
-% input
+% input, and if the returned FIFO equals the end of the input signal
 
     % Setup 
     testSignalReal = testSignalGenerator;
     testSignalImag = testSignalGenerator;
-    subbandSignal.L = testSignalReal(:,1) + 1i*testSignalImag(:,2);
-    subbandSignal.R = testSignalReal(:,1) + 1i*testSignalImag(:,2);
+    subbandSignal.L = testSignalReal(:,1) + 1i*testSignalImag(:,1);
+    subbandSignal.R = testSignalReal(:,2) + 1i*testSignalImag(:,2);
 
     p0Values = (32:160)';
+    
+    FilterStates.L.p0DetectionFIFO = zeros(1,max(p0Values));
+    FilterStates.R.p0DetectionFIFO = zeros(1,max(p0Values));
 
     mode = 'range';
     
     % Exercise
-    [sigma, delta] = calcSigmaDeltaBinaural(subbandSignal, p0Values, mode);
+    [sigma, delta, FilterStates] = calcSigmaDeltaBinaural(subbandSignal, ...
+        p0Values, FilterStates, mode);
     
     % Verify
-    expectedSize = [length(subbandSignal.L) length(p0Values)];
+    expectedSize = [size(subbandSignal.L,1) length(p0Values)];
     verifySize(testCase,sigma.L,expectedSize)
     verifySize(testCase,sigma.R,expectedSize)
     verifySize(testCase,delta.L,expectedSize)
     verifySize(testCase,delta.R,expectedSize)
+
+    verifyEqual(testCase,FilterStates.L.p0DetectionFIFO,...
+        flip(subbandSignal.L(end-max(p0Values)+1:end).'))
+    verifyEqual(testCase,FilterStates.R.p0DetectionFIFO,...
+        flip(subbandSignal.R(end-max(p0Values)+1:end).'))
 end
 
-function testCalcSigmaDeltaBinauralDiscrete(testCase)
+function testCalcSigmaDeltaBinauralDiscreteSizes(testCase)
 % test if Sigma/Delta discrete value computation produces output of 
 % expected size (number of samples with detected p0) with complex 
-% binaural signal as input
+% binaural signal as input, and if the returned FIFO equals the end of the 
+% input signal
 
     % Setup 
     testSignalReal = testSignalGenerator;
@@ -393,6 +438,9 @@ function testCalcSigmaDeltaBinauralDiscrete(testCase)
     subbandSignal.R = testSignalReal(:,1) + 1i*testSignalImag(:,2);
     
     p0SearchRangeSamplesVector = (32:160)';
+
+    FilterStates.L.p0CandidateFIFO = zeros(max(p0SearchRangeSamplesVector),1);
+    FilterStates.R.p0CandidateFIFO = zeros(max(p0SearchRangeSamplesVector),1);
     
     p0CandidateSampleIndexVector.L = zeros(size(subbandSignal.L));
     p0CandidateSampleIndexVector.R = zeros(size(subbandSignal.R));
@@ -405,8 +453,9 @@ function testCalcSigmaDeltaBinauralDiscrete(testCase)
     mode = 'discrete';
     
     % Exercise
-    [sigma, delta] = calcSigmaDeltaBinaural(subbandSignal, ...
-        p0SearchRangeSamplesVector, mode, p0CandidateSampleIndexVector);
+    [sigma, delta, FilterStates] = calcSigmaDeltaBinaural(subbandSignal, ...
+        p0SearchRangeSamplesVector, FilterStates, mode, ...
+        p0CandidateSampleIndexVector);
     
     % Verify
     expectedSize.L = [length(find(p0CandidateSampleIndexVector.L)) 1];
@@ -415,9 +464,14 @@ function testCalcSigmaDeltaBinauralDiscrete(testCase)
     verifySize(testCase,sigma.R,expectedSize.R)
     verifySize(testCase,delta.L,expectedSize.L)
     verifySize(testCase,delta.R,expectedSize.R)
+
+    verifyEqual(testCase,FilterStates.L.p0CandidateFIFO,...
+        subbandSignal.L(end-max(p0SearchRangeSamplesVector)+1:end))
+    verifyEqual(testCase,FilterStates.R.p0CandidateFIFO,...
+        subbandSignal.R(end-max(p0SearchRangeSamplesVector)+1:end))
 end
 
-function testAbsoluteSquareLPFilterBinaural(testCase)
+function testAbsoluteSquareLPFilterBinauralSizes(testCase)
 % test if the absoluteSquareLPFilterBinaural function generates output
 % structs of equal size to the input and if the returned filter states are
 % non-zero
@@ -449,7 +503,7 @@ function testAbsoluteSquareLPFilterBinaural(testCase)
     verifySize(testCase,deltaOut.R,expectedSize)
 end
 
-function testFirstOrderLowPass(testCase)
+function testFirstOrderLowPassSizes(testCase)
 % test if the first order lowpass filter function returns output signal of
 % equal size to input signal and returns correct filter state for a
 % single-channel input signal
@@ -472,7 +526,7 @@ function testFirstOrderLowPass(testCase)
     verifyEqual(testCase,filterState,outputSignal(end,:))
 end
 
-function testFirstOrderLowPassBinaural(testCase)
+function testFirstOrderLowPassBinauralSizes(testCase)
 % test if the first order lowpass filter function returns output signal of
 % equal size to input signal and returns correct filter state for a
 % two-channel input signal
@@ -492,7 +546,7 @@ function testFirstOrderLowPassBinaural(testCase)
     verifyEqual(testCase,filterState,outputSignal(end,:))
 end
 
-function testFirstOrderLowPassComplex(testCase)
+function testFirstOrderLowPassComplexSizes(testCase)
 % test if the first order lowpass filter function returns output signal of
 % equal size to input signal and returns correct filter state for a
 % single-channel complex input signal
@@ -528,7 +582,7 @@ function testFirstOrderLowpassFilterStateRelay(testCase)
     inputSignal = inputSignal(:,1);
 
     blockLength = 1000;
-    nBlocks = floor(length(inputSignal)/blockLength);
+    nBlocks = floor(size(inputSignal,1)/blockLength);
     
     % Exercise
     [batchOutputSignal, ~] = firstOrderLowPass(inputSignal, ...
@@ -546,7 +600,7 @@ function testFirstOrderLowpassFilterStateRelay(testCase)
     verifyEqual(testCase,blockOutputSignal,batchOutputSignal)
 end
 
-function testCalcSNRBinaural(testCase)
+function testCalcSNRBinauralSizes(testCase)
 % test if a binaural set of input signals in the calsSNRBinaural funtion
 % generates output structures of the same size
 
@@ -565,23 +619,7 @@ function testCalcSNRBinaural(testCase)
     verifySize(testCase,snr.R,expectedSize)
 end
 
-function testCalcSNR(testCase)
-% test if a set of input signals in the calsSNR funtion
-% generates output structures of the same size
-
-    % Setup 
-    sigma = testSignalGenerator;
-    delta = testSignalGenerator;
-
-    % Exercise
-    snr = calcSNR(sigma, delta);
-
-    % Verify
-    expectedSize = size(sigma);
-    verifySize(testCase,snr,expectedSize)
-end
-
-function testSubbandSnrPeakDetectionBinaural(testCase)
+function testSubbandSnrPeakDetectionBinauralSizes(testCase)
 % test if the subbandSnrPeakDetectionBinaural function returns arrays of
 % the expected dimension and if they only contain values less or equal to
 % the maximum p0 value in samples
@@ -598,7 +636,7 @@ function testSubbandSnrPeakDetectionBinaural(testCase)
     p0Candidates = subbandSnrPeakDetectionBinaural(snr);
 
     % Validate
-    expectedSize = [length(snr.L), 1];
+    expectedSize = [size(snr.L,1), 1];
     verifySize(testCase,p0Candidates.L,expectedSize)
     verifySize(testCase,p0Candidates.R,expectedSize)
 

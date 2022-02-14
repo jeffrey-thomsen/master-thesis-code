@@ -36,35 +36,40 @@ function [sigmaCells, deltaCells, snrCells, ...
         subbandSignal.R = subbandSignalArray.R(:,iBand);
         normalizedSubbandSignal.L = normalizedSubbandSignalArray.L(:,iBand);
         normalizedSubbandSignal.R = normalizedSubbandSignalArray.R(:,iBand);
-        FilterStates.L = AlgorithmStates.L.ProcessingStates{iBand};
-        FilterStates.R = AlgorithmStates.R.ProcessingStates{iBand};
-        
-        % calculate normalized SNR
-        [normalizedSigma, normalizedDelta] = ...
+        States.L = AlgorithmStates.L.ProcessingStates{iBand};
+        States.R = AlgorithmStates.R.ProcessingStates{iBand};
+
+
+        % compute sigma and delta values for all p0 in search range from
+        % normalized subband signal
+        [normalizedSigma, normalizedDelta, States] = ...
             calcSigmaDeltaBinaural(normalizedSubbandSignal, ...
-                p0SearchRangeSamplesVector, 'range');
-    
-        [normalizedSigma, normalizedDelta, FilterStates] = ...
+            p0SearchRangeSamplesVector, States, 'range');
+        
+        % pre-process normalized sigmas and deltas for SNR computation
+        [normalizedSigma, normalizedDelta, States] = ...
             absoluteSquareLPFilterBinaural(normalizedSigma, ...
-            normalizedDelta, AlgorithmParameters, FilterStates);
-    
+            normalizedDelta, AlgorithmParameters, States);
+        
+        % compute normalized SNR for every p0 in search range
         normalizedSnr = calcSNRBinaural(normalizedSigma, normalizedDelta);
         
-        % intra-subband SNR peak detection
+        % intra-subband SNR peak detection: find p0 candidate for each
+        % signal sample
         p0CandidateSampleIndexVector = ...
             subbandSnrPeakDetectionBinaural(normalizedSnr);
 
-        % calculate Sigmas, Deltas and SNR for p0 candidates
-        [p0CandidateSigma, p0CandidateDelta] = ...
+        % calculate Sigmas, Deltas and SNR for p0 candidates from subband
+        % signal
+        [p0CandidateSigma, p0CandidateDelta, States] = ...
             calcSigmaDeltaBinaural(subbandSignal, ...
-            p0SearchRangeSamplesVector, 'discrete', ...
+            p0SearchRangeSamplesVector, States, 'discrete', ...
             p0CandidateSampleIndexVector);
-    
         p0CandidateSnr = calcSNRBinaural(p0CandidateSigma, p0CandidateDelta);
 
         % write into structs
-        AlgorithmStates.L.AlgorithmStates{iBand} = FilterStates.L;
-        AlgorithmStates.R.AlgorithmStates{iBand} = FilterStates.R;
+        AlgorithmStates.L.ProcessingStates{iBand} = States.L;
+        AlgorithmStates.R.ProcessingStates{iBand} = States.R;
         
         p0CandidateSampleIndexVectorCells.L{iBand} = ...
             p0CandidateSampleIndexVector.L;

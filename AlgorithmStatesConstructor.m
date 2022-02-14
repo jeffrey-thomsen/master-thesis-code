@@ -25,7 +25,7 @@ function [AlgorithmStates, nBands] = AlgorithmStatesConstructor(AlgorithmParamet
         AlgorithmParameters.p0SearchRangeHz(1));
 
     States.p0DetectionFIFO = zeros(1,nMaxSamplesP0Detection);
-    States.p0CandidateFIFO = zeros(1,nMaxSamplesP0Detection);
+    States.p0CandidateFIFO = zeros(nMaxSamplesP0Detection,1);
     States.ivsGradientPrevVal = 0;
     
     %% generate separate set for each subband and channel

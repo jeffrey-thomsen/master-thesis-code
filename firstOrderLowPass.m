@@ -11,7 +11,7 @@ function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
     %% Filter iterations
     outputSignal(1,:) = a*filterState + (1-a)*inputSignal(1,:);
     % rest of averaged elements (using past averaged elements)
-    for iSample = 2:length(outputSignal)
+    for iSample = 2:size(outputSignal,1)
         outputSignal(iSample,:) = ...
             a*outputSignal(iSample-1,:) + (1-a)*inputSignal(iSample,:);
     end

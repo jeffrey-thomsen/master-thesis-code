@@ -3,4 +3,5 @@ function [azimuth, azDetectedIndexVectors, AlgorithmStates] = ...
 
 centerFreqs = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
 azimuth = subbandSignalArray;
+azDetectedIndexVectors = subbandSignalArray;
 end

@@ -4,17 +4,17 @@
 % algorithm.
 % testSignal - Nx2 matrix containing real-valued binaural input signal
 % processedSignal - Nx2 matrix with the real-valued processed signal
-function processedSignal = blockFeedingRoutine(testSignal, ...
+function [processedSignal, AlgorithmStates] = blockFeedingRoutine(testSignal, ...
   BlockFeedingParameters, AlgorithmParameters, AlgorithmStates)
 
-    if nargin > 1 && exist('BlockFeedingParameters.blockLength','var')
+    if nargin > 1 && isfield(BlockFeedingParameters,'blockLength')
         blockLength = BlockFeedingParameters.blockLength;
     else
         blockLength = 100;
     end
     assert(blockLength<length(testSignal), ...
         "Block length must be shorter than signal")
-    nBlocks = floor(length(testSignal)/blockLength);
+    nBlocks = floor(size(testSignal,1)/blockLength);
 
     
     % Cut signal into specified block sizes and run speech enhancement

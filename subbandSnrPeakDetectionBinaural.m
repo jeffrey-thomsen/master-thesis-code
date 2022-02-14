@@ -4,6 +4,15 @@ function p0CandidateIndexVector = subbandSnrPeakDetectionBinaural(snr)
 end
 
 function p0CandidateGlobalMaxIndexVector = subbandSnrPeakDetection(snr)
+    % within snr matrix, find global maxima along p0 search range for each 
+    % signal sample, excluding edge maxima
+    % snr - NxM matrix - N: length of subband signal, M: number of values
+    % in p0 search range
+    % Returns vector of length N, containing for each signal sample: the 
+    % index of maximum SNR value within p0 search range, or 0 if none was 
+    % found for that sample
+
+
     % Calculate difference vector to find positive or negative gradient
     % assign +1 if positive gradient (difference)
     % assign -1 if negative gradient (difference)

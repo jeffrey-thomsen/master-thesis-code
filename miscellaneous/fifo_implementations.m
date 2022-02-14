@@ -1,3 +1,35 @@
+%% My reference experiments
+% All equal results, Method 1 more than twice as fast as Methods 2 and 3
+
+% testSS = complex Nx1 signal array
+% testFIFO = 1xM array
+
+% Method 1: use circshift
+tic
+testFIFO1=testFIFO;
+for i=1:length(testSS)
+    testFIFO1(end) = testSS(i);
+    testFIFO1 = circshift(testFIFO1,1);
+end
+toc
+
+% Method 2: concatenate
+tic
+testFIFO2=testFIFO;
+for i=1:length(testSS)
+    testFIFO2 = [testSS(i), testFIFO2(1:end-1)];
+end
+toc
+
+% Method 3: just overwrite entire array
+tic
+testFIFO3=testFIFO;
+for i=1:length(testSS)
+    testFIFO3(2:end) = testFIFO3(1:end-1);
+    testFIFO3(1) = testSS(i);
+end
+toc
+
 %% FIFO implementations
 % https://de.mathworks.com/matlabcentral/answers/289883-fast-fifo-array-other-datatype
 
