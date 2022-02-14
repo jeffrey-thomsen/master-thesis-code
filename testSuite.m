@@ -299,7 +299,7 @@ function testGammatoneFilterbankInBlockFeederCompare(testCase)
         speechEnhancement(input, AlgorithmParameters, AlgorithmStatesBatch);
     
     % Verify
-    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",10*eps)
+    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",1e-12)
 end
 
 % Periodicity Analysis
@@ -384,7 +384,7 @@ function testPeriodicityAnalysisInBlockFeederCompare(testCase)
         speechEnhancement(input, AlgorithmParameters, BatchStates);
 
     % Verify
-    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",10*eps)
+    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",1e-12)
     
     verifyEqual(testCase,BlockStates,BatchStates,"AbsTol",1e-12)
     
@@ -643,3 +643,5 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
     verifyLessThanOrEqual(testCase,p0Candidates.L,nP0Values)
     verifyLessThanOrEqual(testCase,p0Candidates.R,nP0Values)
 end
+
+% Direction-of-arrival estimation
