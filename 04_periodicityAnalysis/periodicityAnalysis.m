@@ -67,10 +67,11 @@ function [sigmaCells, deltaCells, snrCells, ...
             p0CandidateSampleIndexVector);
         p0CandidateSnr = calcSNRBinaural(p0CandidateSigma, p0CandidateDelta);
 
-        % write into structs
+        % write states back into global structs
         AlgorithmStates.L.ProcessingStates{iBand} = States.L;
         AlgorithmStates.R.ProcessingStates{iBand} = States.R;
         
+        % write computed values into structs for enhancement stage
         p0CandidateSampleIndexVectorCells.L{iBand} = ...
             p0CandidateSampleIndexVector.L;
         p0CandidateSampleIndexVectorCells.R{iBand} = ...

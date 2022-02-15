@@ -16,6 +16,7 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.p0SearchRangeHz = [100 500]; % Bruemann2018
     AlgorithmParameters.snrLPFilterTau = 0.04; % Bruemann2018
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
+    AlgorithmParameters.nCyclesTau = 5; % Dietz2011
     AlgorithmParameters.snrThresholdInDb = 0;
 
     AlgorithmParameters.Cancellation = true;

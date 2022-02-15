@@ -1,3 +1,11 @@
+% This is a simple low-pass filter y(n) = (1-a)*x(n) - a*y(n-1)
+% Meaning of parameter a:
+% a - damping coefficient (0 - no filtering, 1 - flat output)
+%
+% tau - time constant in seconds, when the filter decays to exp(-1)
+% a = exp(-1/(fs*tau)) where fs - sampling frequency, or identical as used
+% here: a = exp(-(T/tau)) where T = 1/fs - sampling period in seconds  
+%
 function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
   filterState, AlgorithmParameters, varargin)
 
@@ -21,3 +29,6 @@ function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
     end
     filterState = outputSignal(end,:);
 end
+
+% equal to  filter([1-a(ii)], [1, -a(ii)], signal(:,ii)) ???
+% equal to lowpass???
