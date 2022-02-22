@@ -16,12 +16,12 @@ function p0CandidateGlobalMaxIndexVector = subbandSnrPeakDetection(snr)
     % Calculate difference vector to find positive or negative gradient
     % assign +1 if positive gradient (difference)
     % assign -1 if negative gradient (difference)
-    snrDifferenceGradient = sign(diff(snr)); % Set 1 for positive, -1 for negative gradient
+    snrDifferenceGradient = sign(diff(snr,1,2)); % Set 1 for positive, -1 for negative gradient
     snrDifferenceGradient(snrDifferenceGradient==0) = 1; % if sign is 0, set to positive
     snrDiffereceGradientShifted = ...
-        [snrDifferenceGradient(1,:); snrDifferenceGradient];
+        [snrDifferenceGradient(:,1), snrDifferenceGradient];
     snrDifferenceGradient = ...
-        [snrDifferenceGradient; snrDifferenceGradient(end,:)];
+        [snrDifferenceGradient, snrDifferenceGradient(:,end)];
 
     % Set local maxima to logical true if non-edge maximum detected
     p0CandidateLocalMaxLogicalMatrixIndices = false(size(snr));

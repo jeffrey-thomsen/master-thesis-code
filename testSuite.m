@@ -359,37 +359,6 @@ function testPeriodicityAnalysisExpectedSizes(testCase)
     end
 end
 
-function testPeriodicityAnalysisInBlockFeederCompare(testCase)
-% test if periodicity analysis returns identical output signal and filter
-% states when run within the block feeding framework, running only one 
-% sample at a time, and when run as batch
-    
-    % Setup
-    BlockFeedingParameters.blockLength = 1;
-    AlgorithmParameters = AlgorithmParametersConstructor();
-    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
-    AlgorithmStatesConstructor(AlgorithmParameters);
-
-    BlockStates = AlgorithmStates;
-    BatchStates = AlgorithmStates;
-   
-    % create test signal
-    input = rand(500,2)-0.5;
-    input = testInputSignal(input);
-
-    % Exercise
-    [blockOutput, BlockStates] = blockFeedingRoutine(input,...
-        BlockFeedingParameters, AlgorithmParameters, BlockStates);
-    [batchOutput, BatchStates] = ...
-        speechEnhancement(input, AlgorithmParameters, BatchStates);
-
-    % Verify
-    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",1e-12)
-    
-    verifyEqual(testCase,BlockStates,BatchStates,"AbsTol",1e-12)
-    
-end
-
 function testCalcSigmaDeltaBinauralRangeSizes(testCase)
 % test if Sigma/Delta range computation produces output of expected size
 % (length-of-signal x length-of-p0-vector) with complex binaural signal as
@@ -637,11 +606,203 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
 
     % Validate
     expectedSize = [size(snr.L,1), 1];
-    verifySize(testCase,p0Candidates.L,expectedSize)
-    verifySize(testCase,p0Candidates.R,expectedSize)
+    verifySize(testCase, p0Candidates.L, expectedSize)
+    verifySize(testCase, p0Candidates.R, expectedSize)
 
-    verifyLessThanOrEqual(testCase,p0Candidates.L,nP0Values)
-    verifyLessThanOrEqual(testCase,p0Candidates.R,nP0Values)
+    verifyLessThanOrEqual(testCase, p0Candidates.L, nP0Values)
+    verifyLessThanOrEqual(testCase, p0Candidates.R, nP0Values)
 end
 
 % Direction-of-arrival estimation
+function testIldBinauralLowPassFilter1000Hz(testCase)
+% test if the function effectively filters out a frequency of 1000 Hz
+
+    % Setup
+    samplingRateHz = 10000;
+    dt = 1/samplingRateHz;
+    
+    timeVectorSeconds = dt:dt:1;
+    freqHz = 1000;
+    signal = sin(2*pi*freqHz*timeVectorSeconds);
+    subbandSignal.L = signal;
+    subbandSignal.R = signal;
+
+    state = [0; 0];
+    States.L.ildLP = state;
+    States.R.ildLP = state;
+
+    % Exercise
+    [subbandSignalLp, ~] = ...
+        ildBinauralLowPassFilter(States, subbandSignal, samplingRateHz);
+
+    % Verify
+    verifyLessThan(testCase, max(abs(subbandSignalLp.L))/...
+        max(abs(subbandSignal.L)), 0.02)
+    verifyLessThan(testCase, max(abs(subbandSignalLp.R))/...
+        max(abs(subbandSignal.R)), 0.02)
+end
+
+function testIldBinauralLowPassFilter20Hz(testCase)
+% test if the function leaves a frequency of 10 Hz untouched
+
+    % Setup
+    samplingRateHz = 10000;
+    dt = 1/samplingRateHz;
+    
+    timeVectorSeconds = dt:dt:1;
+    freqHz = 10;
+    signal = sin(2*pi*freqHz*timeVectorSeconds);
+    subbandSignal.L = signal;
+    subbandSignal.R = signal;
+
+    state = [0; 0];
+    States.L.ildLP = state;
+    States.R.ildLP = state;
+
+    % Exercise
+    [subbandSignalLp, ~] = ...
+        ildBinauralLowPassFilter(States, subbandSignal, samplingRateHz);
+
+    % Verify
+    verifyGreaterThan(testCase, max(abs(subbandSignalLp.L))/...
+        max(abs(subbandSignal.L)), 0.98)
+    verifyGreaterThan(testCase, max(abs(subbandSignalLp.R))/...
+        max(abs(subbandSignal.R)), 0.98)
+end
+
+function testIldBinauralLowPassFilterStateRelay(testCase)
+% test if block-wise filtering with lowpass for ILD results in the same
+% output as batch filtering the entire signal, thus testing the function of
+% the filter state variable
+    % Setup
+    samplingRateHz = 16000;
+    state = [0; 0];
+    BatchStates.L.ildLP = state;
+    BatchStates.R.ildLP = state;
+    BlockStates.L.ildLP = state;
+    BlockStates.R.ildLP = state;
+    
+    testSignal = testSignalGenerator;
+    inputSignal.L = testSignal(:,1);
+    inputSignal.R = testSignal(:,2);
+
+    blockLength = 1000;
+    nBlocks = floor(size(inputSignal.L,1)/blockLength);
+    
+    % Exercise
+    [batchOutputSignalLp, BatchStates] = ...
+        ildBinauralLowPassFilter(BatchStates, inputSignal, samplingRateHz);
+    
+    blockOutputSignalLp.L = zeros(size(inputSignal.L));
+    blockOutputSignalLp.R = zeros(size(inputSignal.R));
+    for iBlock=1:nBlocks
+
+        signalIndices = round((1:blockLength)+(iBlock-1)*blockLength);
+
+        blockIn.L = inputSignal.L(signalIndices);
+        blockIn.R = inputSignal.R(signalIndices);
+
+        [blockOut, BlockStates] = ...
+            ildBinauralLowPassFilter(BlockStates, blockIn, samplingRateHz);
+
+        blockOutputSignalLp.L(signalIndices) = blockOut.L;
+        blockOutputSignalLp.R(signalIndices) = blockOut.R;
+
+    end
+
+    % Verify
+    verifyEqual(testCase, blockOutputSignalLp, batchOutputSignalLp, ...
+        "AbsTol", 1e-14)
+    verifyEqual(testCase, BlockStates, BatchStates, "AbsTol", 1e-14)
+end
+
+function testDisambiguateIpdActive(testCase)
+% test if function sets the sign as expected, when abs(ILD) is greater than
+% 2.5 dB
+
+    % Setup
+    ildVec = linspace(0,2*pi);
+    ildDb = 5*square(ildVec);
+
+    inIpdRad = -1*square(ildVec);
+
+    % Exercise
+    outIpdRad = disambiguateIpd(inIpdRad, ildDb);
+
+    % Verify
+    verifyEqual(testCase, -inIpdRad, outIpdRad)
+
+end
+
+function testDisambiguateIpdInactive(testCase)
+% test if function leaves the sign as expected, when abs(ILD) is less than
+% 2.5 dB
+
+    % Setup
+    ildVec = linspace(0,2*pi);
+    ildDb = 1*square(ildVec);
+
+    inIpdRad = -1*square(ildVec);
+
+    % Exercise
+    outIpdRad = disambiguateIpd(inIpdRad, ildDb);
+
+    % Verify
+    verifyEqual(testCase, inIpdRad, outIpdRad)
+
+end
+
+% Speech enhancement
+function testSpeechEnhancementInBlockFeederCompare(testCase)
+% test if speech enhancement returns identical output signal and filter
+% states when run within the block feeding framework, running only one 
+% sample at a time, running one block at a time, and when run as batch
+    
+    % Setup
+    AlgorithmParameters = AlgorithmParametersConstructor();
+
+    hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
+    AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
+    AlgorithmParameters.lookuptable = ...
+        ipdToAzimuthLookuptable(hrtf, AlgorithmParameters);
+
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+
+    SampleFeedingParameters.blockLength = 1;
+    BlockFeedingParameters.blockLength = 100;
+
+    SampleStates = AlgorithmStates;
+    BlockStates = AlgorithmStates;
+    BatchStates = AlgorithmStates;
+   
+    % create test signal
+    input = rand(500,2)-0.5;
+    input = testInputSignal(input);
+
+    % Exercise
+    fprintf('\n sample-by-sample processing\n')
+    tic
+    [sampleOutput, SampleStates] = blockFeedingRoutine(input,...
+        SampleFeedingParameters, AlgorithmParameters, SampleStates);
+    toc
+    fprintf('\n block-by-block processing\n')
+    tic
+    [blockOutput, BlockStates] = blockFeedingRoutine(input,...
+        BlockFeedingParameters, AlgorithmParameters, BlockStates);
+    toc
+    fprintf('\n batch processing\n')
+    tic
+    [batchOutput, BatchStates] = ...
+        speechEnhancement(input, AlgorithmParameters, BatchStates);
+    toc
+
+    % Verify
+    verifyEqual(testCase,SampleStates,BatchStates,"AbsTol",1e-12)
+    verifyEqual(testCase,BlockStates,BatchStates,"AbsTol",1e-12)
+    verifyEqual(testCase,sampleOutput,batchOutput,"AbsTol",1e-14)
+    verifyEqual(testCase,blockOutput,batchOutput,"AbsTol",1e-14)
+    
+
+    
+end

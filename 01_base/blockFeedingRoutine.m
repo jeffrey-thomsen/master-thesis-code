@@ -16,7 +16,6 @@ function [processedSignal, AlgorithmStates] = blockFeedingRoutine(testSignal, ..
         "Block length must be shorter than signal")
     nBlocks = floor(size(testSignal,1)/blockLength);
 
-    
     % Cut signal into specified block sizes and run speech enhancement
     % algorithm block-by-block
     processedSignal = zeros(size(testSignal));

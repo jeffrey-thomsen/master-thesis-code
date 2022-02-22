@@ -67,7 +67,7 @@ itd_unwrapped = ...
 lookup = itd2angle_lookuptable(); % this is where my training signals go in
 angl=itd2angle(itd_unwrapped,lookup);
 
-% this is itd2angle.m:
+%% this is itd2angle.m:
 % phi = zeros(size(itd));
 % for n = 1:size(itd,2)
 %     % by calling the output S and MU, phi is z-scored, thus improving the fitting
