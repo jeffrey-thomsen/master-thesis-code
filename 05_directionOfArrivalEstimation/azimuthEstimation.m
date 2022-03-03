@@ -9,6 +9,10 @@ function azimuthDegCells = azimuthEstimation(ipdRad, ...
         % evaluate IPD-to-azimuth mapping polynomial
         azimuthDeg = ipdToAzimuthMapping(ipdRad{iBand}, ...
             AlgorithmParameters.lookuptable{iBand});
+
+        % evaluate ITD-to-azimuth mapping polynomial
+%         azimuthDeg = ipdToAzimuthMapping(itdSec{iBand}, ...
+%             AlgorithmParameters.itdLookuptable{iBand});
         
         % apply binary IVS filter mask - remove all azimuth estimates for 
         % which coherence criteria were not met

@@ -570,7 +570,7 @@ function testFirstOrderLowpassFilterStateRelay(testCase)
 end
 
 function testCalcSNRBinauralSizes(testCase)
-% test if a binaural set of input signals in the calsSNRBinaural funtion
+% test if a binaural set of input signals in the calcSNRBinaural funtion
 % generates output structures of the same size
 
     % Setup 
@@ -586,6 +586,28 @@ function testCalcSNRBinauralSizes(testCase)
     expectedSize = size(sigma.L);
     verifySize(testCase,snr.L,expectedSize)
     verifySize(testCase,snr.R,expectedSize)
+end
+
+function testCalcSNRBinauralExpectedValue(testCase)
+% test if a binaural set of input signals in the calcSNRBinaural funtion
+% generates output of correct value
+
+    % Setup 
+    sigmaVal = 3;
+    deltaVal = 4;
+
+    sigma.L = sigmaVal*ones(100,1);
+    sigma.R = sigmaVal*ones(100,1);
+    delta.L = deltaVal*ones(100,1);
+    delta.R = deltaVal*ones(100,1);
+
+    % Exercise
+    snr = calcSNRBinaural(sigma, delta);
+
+    % Verify
+    expectedValue = (sigmaVal/deltaVal)*ones(100,1);
+    verifyEqual(testCase, snr.L, expectedValue, "AbsTol", 1e-15)
+    verifyEqual(testCase, snr.R, expectedValue, "AbsTol",1e-15)
 end
 
 function testSubbandSnrPeakDetectionBinauralSizes(testCase)
@@ -805,4 +827,27 @@ function testSpeechEnhancementInBlockFeederCompare(testCase)
     
 
     
+end
+
+%% LP filter testing
+function testFirstOrderLPFilterAgainstFilter(testCase)
+% verify that the firstOrderLPFilter.m function functions equally to the
+% MATLAB-internal filter function
+
+% Setup
+AlgorithmParameters = AlgorithmParametersConstructor;
+fs = AlgorithmParameters.Gammatone.samplingRateHz;
+T = 1/fs;
+tau = 0.1;
+a = exp(-(T/tau));
+
+inputSignal = testSignalGenerator;
+
+% Exercise
+[ownOutput, ~] = firstOrderLowPass(inputSignal, 0, AlgorithmParameters, tau);
+
+matlabOutput = filter([1-a], [1, -a], inputSignal);
+
+% Verify
+verifyEqual(testCase, ownOutput, matlabOutput)
 end

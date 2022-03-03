@@ -1,4 +1,4 @@
-function [ipdCells, ivsCells, ildCells, AlgorithmStates] = ...
+function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogicalCells, itdCells, itdDisambiguatedLogicalCells] = ...
   interauralFeatureComputation(subbandSignalArray, AlgorithmParameters, ...
   AlgorithmStates)
 
@@ -11,8 +11,11 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates] = ...
     nBands = AlgorithmParameters.Gammatone.nBands;
 
     ipdCells = cell(1, nBands);
+    ipdDisambiguatedLogicalCells = cell(1, nBands); % for evaluation only
     ivsCells = cell(1, nBands);
     ildCells = cell(1, nBands);
+    itdCells = cell(1, nBands);
+    itdDisambiguatedLogicalCells = cell(1, nBands); % for evaluation only
     
     for iBand = 1:nBands
         subbandSignal.L = subbandSignalArray.L(:,iBand);
@@ -45,16 +48,68 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates] = ...
         [ipdRad, States.Binaural.ipdLP] = ...
             firstOrderLowPass(ipdRad, States.Binaural.ipdLP, AlgorithmParameters, tauS);
         
-        ipdRad = disambiguateIpd(ipdRad, ildDb);
-            
+        ipdRadDisambiguated = disambiguateIpd(ipdRad, ildDb);
+        ipdDisambiguatedLogical = ipdRad ~= ipdRadDisambiguated;
+
+        %% ITD
+
+        % instantaneous frequency (f_inst), eq. 4 in Dietz (2011)
+        f_inst_left  = calc_f_inst(subbandSignal.L, samplingRateHz);
+        f_inst_right = calc_f_inst(subbandSignal.R, samplingRateHz);
+        f_inst = max(eps,0.5*(f_inst_left + f_inst_right)); % to avoid division by zero
+        
+        % interaural time difference (ITD), based on instantaneous frequencies
+        itdSec = 1/(2*pi)*ipdRad./f_inst;
+
+        itdSecDisambiguated = dietz2011_unwrapitd(itdSec,ildDb,f_inst);
+        itdDisambiguatedLogical = itdSec ~= itdSecDisambiguated;
         %% write states back into global structs
         AlgorithmStates.L.ProcessingStates{iBand} = States.L;
         AlgorithmStates.R.ProcessingStates{iBand} = States.R;
         AlgorithmStates.Binaural.ProcessingStates{iBand} = States.Binaural;
         
         %% write computed values into structs
-        ipdCells{iBand} = ipdRad;
+        ipdCells{iBand} = itdSecDisambiguated;%ipdRadDisambiguated;
+        ipdDisambiguatedLogicalCells{iBand} = ipdDisambiguatedLogical;
         ivsCells{iBand} = ivsMask;
         ildCells{iBand} = ildDb;
+        itdCells{iBand} = itdSecDisambiguated;
+        itdDisambiguatedLogicalCells{iBand} = itdDisambiguatedLogical;
     end
+end
+
+function f_inst = calc_f_inst(sig, fs)
+  % function f_inst = calc_f_inst(sig,fs);
+  %
+  % Calculates instantaneous frequency from a complex (analytical) signal
+  % using first order differences
+  %
+  % input parameters:
+  %   sig  : complex (analytical) input signal
+  %   fs   : sampling frequency of sig
+  %
+  % output values:
+  %   f_inst:   vector of estimated inst. frequency values
+  %
+  % copyright: Universitaet Oldenburg
+  % author   : volker hohmann
+  % date     : 12/2004
+  sig = sig./(abs(sig)+eps);
+  f_inst = [0; sig(2:end).*conj(sig(1:end-1))];
+  f_inst = angle(f_inst)/2/pi*fs;
+end
+
+function itd = dietz2011_unwrapitd(itd,ild,f_inst,tr)
+    %% ===== Checking of input parameters ===================================
+    nargmin = 3;
+    nargmax = 4;
+    narginchk(nargmin,nargmax);
+    if nargin==3
+        tr = 2.5;
+    end
+    %% ===== Calculation ====================================================
+    itd = itd + ...
+        round( ... % this will be -1,0,1
+            0.4*sign(round(ild/2 / (abs(tr)+1e-9))) - 0.4*sign(itd) ) ...
+        ./ f_inst;
 end

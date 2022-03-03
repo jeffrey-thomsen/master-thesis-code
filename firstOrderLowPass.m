@@ -29,6 +29,3 @@ function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
     end
     filterState = outputSignal(end,:);
 end
-
-% equal to  filter([1-a(ii)], [1, -a(ii)], signal(:,ii)) ???
-% equal to lowpass???

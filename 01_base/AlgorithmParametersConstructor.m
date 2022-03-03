@@ -20,6 +20,6 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.snrThresholdInDb = 0;
 
     AlgorithmParameters.Cancellation = true;
-    AlgorithmParameters.Enhancement = false;
+    AlgorithmParameters.Enhancement = true;
 
 end
