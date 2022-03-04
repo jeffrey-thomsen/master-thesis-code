@@ -28,6 +28,7 @@ function [AlgorithmStates, nBands] = AlgorithmStatesConstructor(AlgorithmParamet
     % seperate processing of each channel
     States.p0DetectionFIFO = zeros(1,nMaxSamplesP0Detection);
     States.p0CandidateFIFO = zeros(nMaxSamplesP0Detection,1);
+    States.instFreqPreviousValue = 0;
     % combined binaural processing
     BinauralStates.ivsPreviousValue = 0;
     %% generate separate set for each subband and channel

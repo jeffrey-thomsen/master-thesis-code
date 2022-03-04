@@ -1,13 +1,21 @@
-function azimuthDegCells = azimuthEstimation(ipdRad, ...
+function azimuthDegCells = azimuthEstimation(ipdRad, itdSec, ...
   ivsMask, AlgorithmParameters)
 
+    switch AlgorithmParameters.lookuptableType
+        case 'itd'
+            mappingData = itdSec;
+        case 'ipd'
+            mappingData = ipdRad;
+    end
+    
     nBands = AlgorithmParameters.Gammatone.nBands;
     azimuthDegCells = cell(1, nBands);
-
+    
     for iBand = 1:nBands
 
         % evaluate IPD-to-azimuth mapping polynomial
-        azimuthDeg = ipdToAzimuthMapping(ipdRad{iBand}, ...
+
+        azimuthDeg = interauralToAzimuthMapping(mappingData{iBand}, ...
             AlgorithmParameters.lookuptable{iBand});
 
         % evaluate ITD-to-azimuth mapping polynomial

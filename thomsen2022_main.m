@@ -19,13 +19,15 @@ TargetAngleParameters = struct;
 BlockFeedingParameters = struct;
 AlgorithmParameters = AlgorithmParametersConstructor();
 
+AlgorithmParameters.p0SearchRangeHz = [100 1000];
+
 % load HRTF
 hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
 AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
 
 % generate IPD-to-azimuth mapping function
 AlgorithmParameters.lookuptable = ...
-    ipdToAzimuthLookuptable(hrtf, AlgorithmParameters);
+    interauralToAzimuthLookuptable(hrtf, AlgorithmParameters);
 
 % resampling sampling frequency to at least 
 % 2x upper gammatone centre frequency
@@ -100,7 +102,8 @@ figure;histogram(nonzeros(azDeg(abs(azDeg)<90)))
 periodicityRatio = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(testSignal);
 doaRatio = (numel(nonzeros(azDeg))/30)/length(testSignal);
 
-
+enhancedLogicalArray = coherentPeriodicComponentLogicalVectorL & (abs(azDeg)<5);
+suppressedLogicalArray = coherentPeriodicComponentLogicalVectorL & (abs(azDeg)>5);
 %% Compare to target speech
 targetSignal = resample(target,1,resampleFactor);
 tic
@@ -135,6 +138,8 @@ periodicityRatioTarget = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0Det
 doaRatioTarget = (numel(nonzeros(azDegTar))/30)/length(targetSignal);
 
 
+enhancedLogicalArrayTar = coherentPeriodicComponentLogicalVectorLTarget & (abs(azDegTar)<5);
+suppressedLogicalArrayTar = coherentPeriodicComponentLogicalVectorLTarget & (abs(azDegTar)>5);
 %% Compare to interferer speech
 interfSignal = resample(interferer,1,resampleFactor);
 tic
@@ -168,6 +173,9 @@ figure;histogram(nonzeros(azDegInt(abs(azDegInt)<90)))
 periodicityRatioInterf = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(interfSignal);
 doaRatioInterf = (numel(nonzeros(azDegInt))/30)/length(interfSignal);
 
+
+enhancedLogicalArrayInt = coherentPeriodicComponentLogicalVectorLInterf & (abs(azDegInt)<5);
+suppressedLogicalArrayInt = coherentPeriodicComponentLogicalVectorLInterf & (abs(azDegInt)>5);
 %% Compare coherent periodic samples detected
 
 % overlap of target and interferer detected samples in mixed signal

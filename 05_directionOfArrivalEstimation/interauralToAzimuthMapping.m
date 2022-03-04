@@ -1,4 +1,4 @@
-function azimuthDeg = ipdToAzimuthMapping(ipdRad, lookuptable)
+function azimuthDeg = interauralToAzimuthMapping(ipdRad, lookuptable)
     
     % by calling the output S and MU, phi is z-scored, thus improving the
     % fitting

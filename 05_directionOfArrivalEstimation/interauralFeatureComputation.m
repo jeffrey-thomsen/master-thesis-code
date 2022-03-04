@@ -54,14 +54,16 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
         %% ITD
 
         % instantaneous frequency (f_inst), eq. 4 in Dietz (2011)
-        f_inst_left  = calc_f_inst(subbandSignal.L, samplingRateHz);
-        f_inst_right = calc_f_inst(subbandSignal.R, samplingRateHz);
-        f_inst = max(eps,0.5*(f_inst_left + f_inst_right)); % to avoid division by zero
-        
-        % interaural time difference (ITD), based on instantaneous frequencies
-        itdSec = 1/(2*pi)*ipdRad./f_inst;
+        [instFreqLeft, States.L]  = calcInstFreq(subbandSignal.L,...
+            samplingRateHz, States.L);
+        [instFreqRight, States.R] = calcInstFreq(subbandSignal.R,...
+            samplingRateHz, States.R);
+        instFreq = max(eps,0.5*(instFreqLeft + instFreqRight)); % to avoid division by zero
 
-        itdSecDisambiguated = dietz2011_unwrapitd(itdSec,ildDb,f_inst);
+        % interaural time difference (ITD), based on instantaneous frequencies
+        itdSec = 1/(2*pi)*ipdRad./instFreq;
+
+        itdSecDisambiguated = dietz2011_unwrapitd(itdSec,ildDb,instFreq);
         itdDisambiguatedLogical = itdSec ~= itdSecDisambiguated;
         %% write states back into global structs
         AlgorithmStates.L.ProcessingStates{iBand} = States.L;
@@ -69,7 +71,7 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
         AlgorithmStates.Binaural.ProcessingStates{iBand} = States.Binaural;
         
         %% write computed values into structs
-        ipdCells{iBand} = itdSecDisambiguated;%ipdRadDisambiguated;
+        ipdCells{iBand} = ipdRadDisambiguated;
         ipdDisambiguatedLogicalCells{iBand} = ipdDisambiguatedLogical;
         ivsCells{iBand} = ivsMask;
         ildCells{iBand} = ildDb;
@@ -78,7 +80,7 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
     end
 end
 
-function f_inst = calc_f_inst(sig, fs)
+function [f_inst, States] = calcInstFreq(sig, fs, States)
   % function f_inst = calc_f_inst(sig,fs);
   %
   % Calculates instantaneous frequency from a complex (analytical) signal
@@ -94,8 +96,17 @@ function f_inst = calc_f_inst(sig, fs)
   % copyright: Universitaet Oldenburg
   % author   : volker hohmann
   % date     : 12/2004
+  %
+  % adapted by Jeffrey Thomsen for sample or block-based processing 03/2022
+
+  % handle signal samples for relay processing
+  sig = [States.instFreqPreviousValue; sig];
+  States.instFreqPreviousValue = sig(end);
+  
+  % original computation
   sig = sig./(abs(sig)+eps);
-  f_inst = [0; sig(2:end).*conj(sig(1:end-1))];
+
+  f_inst = [sig(2:end).*conj(sig(1:end-1))];
   f_inst = angle(f_inst)/2/pi*fs;
 end
 

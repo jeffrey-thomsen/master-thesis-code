@@ -13,6 +13,8 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
 
     AlgorithmParameters.Gammatone = GammatoneParameters;
 
+    AlgorithmParameters.lookuptableType = 'itd'; % 'ipd' or 'itd'
+
     AlgorithmParameters.p0SearchRangeHz = [100 500]; % Bruemann2018
     AlgorithmParameters.snrLPFilterTau = 0.04; % Bruemann2018
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011

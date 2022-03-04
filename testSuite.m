@@ -782,11 +782,13 @@ function testSpeechEnhancementInBlockFeederCompare(testCase)
     
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();
-
+    
+%     AlgorithmParameters.lookuptableType = 'ipd';
+    
     hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
     AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
     AlgorithmParameters.lookuptable = ...
-        ipdToAzimuthLookuptable(hrtf, AlgorithmParameters);
+        interauralToAzimuthLookuptable(hrtf, AlgorithmParameters);
 
     [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
         AlgorithmStatesConstructor(AlgorithmParameters);
