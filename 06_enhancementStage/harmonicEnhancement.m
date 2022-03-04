@@ -21,11 +21,9 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = harmoni
 
     %% evaluate target and interferer angle conditions
     targetConditionLogicalVectorReCoherentPeriodicSamples = ... % target in front
-        coherentPeriodicAzimuthDegVector >= -5 & ...
-        coherentPeriodicAzimuthDegVector <= 5;
+        abs(coherentPeriodicAzimuthDegVector) <= 5;
     interfererConditionLogicalVectorReCoherentPeriodicSamples = ... % interference from the sides
-        coherentPeriodicAzimuthDegVector < -5 | ...
-        coherentPeriodicAzimuthDegVector > 5;
+        abs(coherentPeriodicAzimuthDegVector) > 5;
 
     % extract signal index values for which IVS and periodic condition hold
     coherentPeriodicSampleIndices = ...

@@ -19,22 +19,27 @@ TargetAngleParameters = struct;
 BlockFeedingParameters = struct;
 AlgorithmParameters = AlgorithmParametersConstructor();
 
-AlgorithmParameters.p0SearchRangeHz = [100 1000];
+AlgorithmParameters.p0SearchRangeHz = [100 350];
 
 % load HRTF
 hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
 AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
 
-% generate IPD-to-azimuth mapping function
-AlgorithmParameters.lookuptable = ...
-    interauralToAzimuthLookuptable(hrtf, AlgorithmParameters);
+% training data strings
 
-% resampling sampling frequency to at least 
-% 2x upper gammatone centre frequency
-resampleFactor = floor(AlgorithmParameters.Gammatone.samplingRateHz/...
-    (2*AlgorithmParameters.Gammatone.fHigh));
-AlgorithmParameters.Gammatone.samplingRateHz =...
-    AlgorithmParameters.Gammatone.samplingRateHz / resampleFactor; 
+
+% generate/load IPD-to-azimuth mapping function
+tic
+lookuptable = load('2022-03-04_itd_lookuptable.mat');
+lookuptable = lookuptable.lookuptable;
+AlgorithmParameters.lookuptable = lookuptable;
+%     interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,...
+%     'intelligence_16.wav', 'storylines_16.wav');
+toc
+
+% set sampling frequency to at least 2x upper gammatone centre frequency
+AlgorithmParameters.Gammatone.samplingRateHz = ...
+    ceil(2*AlgorithmParameters.Gammatone.fHigh);
 
 % generate gammatone filterbank
 [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
@@ -43,28 +48,37 @@ AlgorithmParameters.Gammatone.samplingRateHz =...
 %% Generate test signal
 
 % load clean speech signals
-[target,fs]=audioread('sp01.wav');
-target = resample(target,hrtf.Data.SamplingRate,fs);
+[targetSignal,fsTarget]=audioread('intelligence_16.wav');%'sp01.wav');
+[interfSignal,fsInterf]=audioread('storylines_16.wav');%'sp30.wav');
 
-[interferer,fs]=audioread('sp30.wav');
-interferer = resample(interferer,hrtf.Data.SamplingRate,fs);
+% adjust sampling rate to HRTF
+targetSignal = resample(targetSignal,hrtf.Data.SamplingRate,fsTarget);
+interfSignal = resample(interfSignal,hrtf.Data.SamplingRate,fsInterf);
 
 % equalize lengths
-target = target(1:length(interferer)); 
+if length(targetSignal)>length(interfSignal)
+    targetSignal = targetSignal(1:length(interfSignal));
+elseif length(targetSignal)<length(interfSignal)
+    interfSignal = interfSignal(1:length(targetSignal));
+end
 
 % equalize levels - SNR 0dB
-interferer = interferer*(sum(abs(target).^2)./sum(abs(interferer).^2));
+interfSignal = interfSignal*(sum(abs(targetSignal).^2)./sum(abs(interfSignal).^2));
 
 % convolve with HRTF at different incidence angles
-target = SOFAspat(target, hrtf, 0, 0);
-interferer = SOFAspat(interferer, hrtf, 60, 0);
+targetSignal = SOFAspat(targetSignal, hrtf, 0, 0);
+interfSignal = SOFAspat(interfSignal, hrtf, 60, 0);
 
-% add, resample and normalize test signal
-testSignal = target + interferer;
-testSignal = resample(testSignal,1,resampleFactor); 
-testSignal = testSignal./max(max(testSignal));
+% adjust sampling rate to gammatone filterbank
+targetSignal = resample(targetSignal,AlgorithmParameters.Gammatone.samplingRateHz,hrtf.Data.SamplingRate);
+interfSignal = resample(interfSignal,AlgorithmParameters.Gammatone.samplingRateHz,hrtf.Data.SamplingRate);
+
+% add and normalize test signal
+mixedSignal = targetSignal + interfSignal;
+mixedSignal = mixedSignal./max(max(mixedSignal));
+
 % testSignal = testSignalGenerator;
-testSignal = testInputSignal(testSignal);
+mixedSignal = testInputSignal(mixedSignal);
 
 %% Block-feeding routine - Speech enhancement algorithm
 % tic
@@ -72,160 +86,166 @@ testSignal = testInputSignal(testSignal);
 %     AlgorithmParameters, AlgorithmStates);
 % toc
 tic
-[enhancedSignal, AlgorithmStates, p0DetectedIndexVectors, ...
-    p0SearchRangeSamplesVector, ipdRad, ivsMask, ...
-    ipdDisambiguatedLogicalCells, azimuthDegCells,...
-    targetSampleIndices, interfererSampleIndices] = ...
-    speechEnhancement(testSignal, AlgorithmParameters, AlgorithmStates);
+[enhancedMixedSignal, AlgorithmStatesMixed, p0DetectedIndexVectorsMixed, ...
+    p0SearchRangeSamplesVectorMixed, ipdRadMixed, ivsMaskMixed, ...
+    ipdDisambiguatedLogicalCellsMixed, azimuthDegCellsMixed,...
+    targetSampleIndicesMixed, interfSampleIndicesMixed] = ...
+    speechEnhancement(mixedSignal, AlgorithmParameters, AlgorithmStates);
 toc
+enhancedMixedSignal = enhancedMixedSignal./max(max(abs(enhancedMixedSignal)));
 %% Evaluation
 
-[GC,GR] = groupcounts(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:}));
-GR = nonzeros(GR);%+p0SearchRangeSamplesVector(1)-1;
-GC = GC(end-length(GR)+1:end);
-p0SearchRangeFreqVector = AlgorithmParameters.Gammatone.samplingRateHz./p0SearchRangeSamplesVector;
-% linspace(AlgorithmParameters.p0SearchRangeHz(1),AlgorithmParameters.p0SearchRangeHz(2),length(p0SearchRangeSamplesVector));
-figure;hBar=bar(p0SearchRangeFreqVector(GR),GC);set(gca,'XScale','log');
-meanTestSignal = (testSignal(:,1) + testSignal(:,2))./2;
-figure;spectrogram(meanTestSignal,hamming(1000),[],[],AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
+evalMixed = evaluateAlgorithm(p0DetectedIndexVectorsMixed, AlgorithmParameters, ...
+    p0SearchRangeSamplesVectorMixed, mixedSignal, ivsMaskMixed, ...
+    azimuthDegCellsMixed, targetSampleIndicesMixed, interfSampleIndicesMixed);
 
-azDeg = zeros(30,length(ivsMask{1}));
-for iBand = 1:30
-    azDeg(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
-    coherentPeriodicComponentLogicalVectorL(iBand,:) = ...
-        ivsMask{iBand} & p0DetectedIndexVectors.L{iBand};
-    coherentPeriodicComponentLogicalVectorR(iBand,:) = ...
-        ivsMask{iBand} & p0DetectedIndexVectors.R{iBand};
-end
-figure;histogram(nonzeros(azDeg(abs(azDeg)<90)))
-
-periodicityRatio = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(testSignal);
-doaRatio = (numel(nonzeros(azDeg))/30)/length(testSignal);
-
-enhancedLogicalArray = coherentPeriodicComponentLogicalVectorL & (abs(azDeg)<5);
-suppressedLogicalArray = coherentPeriodicComponentLogicalVectorL & (abs(azDeg)>5);
 %% Compare to target speech
-targetSignal = resample(target,1,resampleFactor);
 tic
-[enhancedTargetSignal, AlgorithmStates, p0DetectedIndexVectors, ...
-    p0SearchRangeSamplesVector, ipdRad, ivsMask, ...
-    ipdDisambiguatedLogicalCells, azimuthDegCells...
-    , targetSampleIndicesTar, interfererSampleIndicesTar] = ...
+[enhancedTargetSignal, AlgorithmStates, p0DetectedIndexVectorsTarget, ...
+    p0SearchRangeSamplesVectorTarget, ipdRadTarget, ivsMaskTarget, ...
+    ipdDisambiguatedLogicalCellsTarget, azimuthDegCellsTarget,...
+    targetSampleIndicesTarget, interfSampleIndicesTarget] = ...
     speechEnhancement(targetSignal, AlgorithmParameters, AlgorithmStates);
 toc
-% Evaluation
+enhancedTargetSignal = enhancedTargetSignal./max(max(abs(enhancedTargetSignal)));
+%% Evaluation
 
-[GCTar,GRTar] = groupcounts(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:}));
-GRTar = nonzeros(GRTar);%+p0SearchRangeSamplesVector(1)-1;
-GCTar = GCTar(end-length(GRTar)+1:end);
-p0SearchRangeFreqVector = AlgorithmParameters.Gammatone.samplingRateHz./p0SearchRangeSamplesVector;
-% linspace(AlgorithmParameters.p0SearchRangeHz(1),AlgorithmParameters.p0SearchRangeHz(2),length(p0SearchRangeSamplesVector));
-figure;hBar=bar(p0SearchRangeFreqVector(GRTar),GCTar);set(gca,'XScale','log');
-meanTargetSignal = (targetSignal(:,1) + targetSignal(:,2))./2;
-figure;spectrogram(meanTargetSignal,hamming(1000),[],[],AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
+evalTarget = evaluateAlgorithm(p0DetectedIndexVectorsTarget, AlgorithmParameters, ...
+    p0SearchRangeSamplesVectorTarget, targetSignal, ivsMaskTarget, ...
+    azimuthDegCellsTarget, targetSampleIndicesTarget, interfSampleIndicesTarget);
 
-azDegTar = zeros(30,length(ivsMask{1}));
-for iBand = 1:30
-    azDegTar(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
-    coherentPeriodicComponentLogicalVectorLTarget(iBand,:) = ...
-        ivsMask{iBand} & p0DetectedIndexVectors.L{iBand};
-    coherentPeriodicComponentLogicalVectorRTarget(iBand,:) = ...
-        ivsMask{iBand} & p0DetectedIndexVectors.R{iBand};
-end
-figure;histogram(nonzeros(azDegTar(abs(azDegTar)<90)))
-
-periodicityRatioTarget = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(targetSignal);
-doaRatioTarget = (numel(nonzeros(azDegTar))/30)/length(targetSignal);
-
-
-enhancedLogicalArrayTar = coherentPeriodicComponentLogicalVectorLTarget & (abs(azDegTar)<5);
-suppressedLogicalArrayTar = coherentPeriodicComponentLogicalVectorLTarget & (abs(azDegTar)>5);
 %% Compare to interferer speech
-interfSignal = resample(interferer,1,resampleFactor);
 tic
-[enhancedInterfSignal, AlgorithmStates, p0DetectedIndexVectors, ...
-    p0SearchRangeSamplesVector, ipdRad, ivsMask, ...
-    ipdDisambiguatedLogicalCells, azimuthDegCells...
-    , targetSampleIndicesInt, interfererSampleIndicesInt] = ...
+[enhancedInterfSignal, AlgorithmStatesInterf, p0DetectedIndexVectorsInterf, ...
+    p0SearchRangeSamplesVectorInterf, ipdRadInterf, ivsMaskInterf, ...
+    ipdDisambiguatedLogicalCellsInterf, azimuthDegCellsInterf,...
+    targetSampleIndicesInterf, interfSampleIndicesInterf] = ...
     speechEnhancement(interfSignal, AlgorithmParameters, AlgorithmStates);
 toc
-% Evaluation
+enhancedInterfSignal = enhancedInterfSignal./max(max(abs(enhancedInterfSignal)));
+%% Evaluation
 
-[GCInt,GRInt] = groupcounts(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:}));
-GRInt = nonzeros(GRInt);%+p0SearchRangeSamplesVector(1)-1;
-GCInt = GCInt(end-length(GRInt)+1:end);
-p0SearchRangeFreqVector = AlgorithmParameters.Gammatone.samplingRateHz./p0SearchRangeSamplesVector;
-% linspace(AlgorithmParameters.p0SearchRangeHz(1),AlgorithmParameters.p0SearchRangeHz(2),length(p0SearchRangeSamplesVector));
-figure;hBar=bar(p0SearchRangeFreqVector(GRInt),GCInt);set(gca,'XScale','log');
-meanInterfSignal = (interfSignal(:,1) + interfSignal(:,2))./2;
-figure;spectrogram(meanInterfSignal,hamming(1000),[],[],AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
+evalInterf = evaluateAlgorithm(p0DetectedIndexVectorsInterf, AlgorithmParameters, ...
+    p0SearchRangeSamplesVectorInterf, interfSignal, ivsMaskInterf, ...
+    azimuthDegCellsInterf, targetSampleIndicesInterf, interfSampleIndicesInterf);
 
-azDegInt = zeros(30,length(ivsMask{1}));
-for iBand = 1:30
-    azDegInt(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
-    coherentPeriodicComponentLogicalVectorLInterf(iBand,:) = ...
-        ivsMask{iBand} & p0DetectedIndexVectors.L{iBand};
-    coherentPeriodicComponentLogicalVectorRInterf(iBand,:) = ...
-        ivsMask{iBand} & p0DetectedIndexVectors.R{iBand};
-end
-figure;histogram(nonzeros(azDegInt(abs(azDegInt)<90)))
-
-periodicityRatioInterf = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(interfSignal);
-doaRatioInterf = (numel(nonzeros(azDegInt))/30)/length(interfSignal);
-
-
-enhancedLogicalArrayInt = coherentPeriodicComponentLogicalVectorLInterf & (abs(azDegInt)<5);
-suppressedLogicalArrayInt = coherentPeriodicComponentLogicalVectorLInterf & (abs(azDegInt)>5);
 %% Compare coherent periodic samples detected
 
-% overlap of target and interferer detected samples in mixed signal
-overlap=(coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLTarget)...% detected samples detected in target and mixed signal
-&...
-(coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLInterf); % detected samples detected in interferer and mixed signal
-
-% detected samples in mixed signal that are neither in target nor in
-% interferer signal
-nooverlap=(coherentPeriodicComponentLogicalVectorL&~coherentPeriodicComponentLogicalVectorLTarget)...
-&...
-(coherentPeriodicComponentLogicalVectorL&~coherentPeriodicComponentLogicalVectorLInterf);
-
-% detected samples in mixed signal that are either in target or interferer
-% signal
-effectiveDetection = (coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLTarget)...% detected samples detected in target and mixed signal
-|...
-(coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLInterf); % detected samples detected in interferer and mixed signal
-
-
-proportionTargetInMixed = numel(nonzeros(coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLTarget))/numel(nonzeros(coherentPeriodicComponentLogicalVectorL));
-proportionInterfInMixed = numel(nonzeros(coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLInterf))/numel(nonzeros(coherentPeriodicComponentLogicalVectorL));
-proportionTargetInterfOverlapInMixed = numel(nonzeros(overlap))/numel(nonzeros(coherentPeriodicComponentLogicalVectorL));
-
-
-
-% proportionMixedInTarget = numel(nonzeros(coherentPeriodicComponentLogicalVectorL&coherentPeriodicComponentLogicalVectorLTarget))/numel(nonzeros(coherentPeriodicComponentLogicalVectorLTarget));
-
-% mixed processed samples that were not processed in target or interferer
-proportionMixedNotInTargetOrInterf = numel(nonzeros(nooverlap))/numel(nonzeros(coherentPeriodicComponentLogicalVectorL));
-% complementary value:
-proportionTargetInterfInMixed = numel(nonzeros(effectiveDetection))/numel(nonzeros(coherentPeriodicComponentLogicalVectorL));
-
 %
-tSI = numel(cat(1,targetSampleIndices.L{:},targetSampleIndices.R{:}));
-tSIT = numel(cat(1,targetSampleIndicesTar.L{:},targetSampleIndicesTar.R{:}));
-tSII = numel(cat(1,targetSampleIndicesInt.L{:},targetSampleIndicesInt.R{:}));
+noTSIM = numel(cat(1,targetSampleIndicesMixed.L{:},targetSampleIndicesMixed.R{:}));
+noTSIT = numel(cat(1,targetSampleIndicesTarget.L{:},targetSampleIndicesTarget.R{:}));
+noTSII = numel(cat(1,targetSampleIndicesInterf.L{:},targetSampleIndicesInterf.R{:}));
 
-iSI = numel(cat(1,interfererSampleIndices.L{:},interfererSampleIndices.R{:}));
-iSIT = numel(cat(1,interfererSampleIndicesTar.L{:},interfererSampleIndicesTar.R{:}));
-iSII = numel(cat(1,interfererSampleIndicesInt.L{:},interfererSampleIndicesInt.R{:}));
-%%
-% Play signals
+noISIM = numel(cat(1,interfSampleIndicesMixed.L{:},interfSampleIndicesMixed.R{:}));
+noISIT = numel(cat(1,interfSampleIndicesTarget.L{:},interfSampleIndicesTarget.R{:}));
+noISII = numel(cat(1,interfSampleIndicesInterf.L{:},interfSampleIndicesInterf.R{:}));
+
+
+
+
+
+%% Play signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(testSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(mixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(enhancedMixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+
+%% Play signals target
+box1 = msgbox('Play original signal (Ensure volume is adequately set)');
+waitfor(box1);
+sound(targetSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
+    ' section of script (adjusting filter variables if necessary)']);
+waitfor(box2);
+sound(enhancedTargetSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+
+%% Play signals interferer
+box1 = msgbox('Play original signal (Ensure volume is adequately set)');
+waitfor(box1);
+sound(interfSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
+    ' section of script (adjusting filter variables if necessary)']);
+waitfor(box2);
+sound(enhancedInterfSignal,AlgorithmParameters.Gammatone.samplingRateHz);
 %% Display and save data
-% audiowrite(['testInput','.wav'],testSignal,AlgorithmParameters.Gammatone.samplingRateHz);
-% audiowrite(['testJeffrey','.wav'],processedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+% audiowrite(['testInput','.wav'],mixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+% audiowrite(['testJeffrey','.wav'],enhancedMixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+
+%% Auxiliary functions
+function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
+    AlgorithmParameters, p0SearchRangeSamplesVector, testSignal, ...
+    ivsMask, azimuthDegCells, targetSampleIndices, interfSampleIndices)
+
+    [evaluation.GC,evaluation.GR] = groupcounts(cat(1,p0DetectedIndexVectors.L{:},...
+        p0DetectedIndexVectors.R{:}));
+    evaluation.GR = nonzeros(evaluation.GR);%+p0SearchRangeSamplesVector(1)-1;
+    evaluation.GC = evaluation.GC(end-length(evaluation.GR)+1:end);
+    evaluation.p0SearchRangeFreqVector = ...
+        AlgorithmParameters.Gammatone.samplingRateHz./p0SearchRangeSamplesVector;
+    
+%     figure;
+%     title('p0 detection histogram')
+%     xlabel('Frequency (Hz)')
+%     ylabel('No. of occurences in subband samples')
+%     hBar = bar(evaluation.p0SearchRangeFreqVector(evaluation.GR),...
+%         evaluation.GC);
+%     set(gca,'XScale','log');
+
+    meanTestSignal = (testSignal(:,1) + testSignal(:,2))./2;
+%     figure;
+%     title('signal spectrogram')
+%     spectrogram(meanTestSignal,hamming(1000),[],[],...
+%         AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
+    
+    evaluation.azDeg = zeros(30,length(ivsMask{1}));
+    for iBand = 1:30
+        evaluation.azDeg(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
+        evaluation.coherentPeriodicComponentLogicalVector.L(iBand,:) = ...
+            ivsMask{iBand} & p0DetectedIndexVectors.L{iBand};
+        evaluation.coherentPeriodicComponentLogicalVector.R(iBand,:) = ...
+            ivsMask{iBand} & p0DetectedIndexVectors.R{iBand};
+    end
+    
+%     figure;
+%     title('DOA estimation histogram')
+%     xlabel('azimuth (Degrees)')
+%     ylabel('No. of occurences in subband samples')
+%     histogram(nonzeros(evaluation.azDeg(abs(evaluation.azDeg)<90)))
+    
+    evaluation.periodicityRatio = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(testSignal);
+    evaluation.doaRatio = (numel(nonzeros(evaluation.azDeg))/30)/length(testSignal);
+        
+    for iBand = 1:30
+        evaluation.targetp0DetectedIndexVectors.L{iBand} = p0DetectedIndexVectors.L{iBand}(targetSampleIndices.L{iBand});
+        evaluation.interfp0DetectedIndexVectors.L{iBand} = p0DetectedIndexVectors.L{iBand}(interfSampleIndices.L{iBand});
+        evaluation.targetp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(targetSampleIndices.R{iBand});
+        evaluation.interfp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(interfSampleIndices.R{iBand});
+    end
+    for iBand = [3,4,5,10,14]
+        figure;
+        title('Gammatone band no.',num2str(iBand))
+
+        subplot(1,2,1)
+        title('Processed periodic samples - Left channel')
+        xlabel('signal sample indices')
+        ylabel('detected frequency (Hz)')
+        hold on;
+        scatter(targetSampleIndices.L{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.targetp0DetectedIndexVectors.L{iBand}));
+        scatter(interfSampleIndices.L{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.interfp0DetectedIndexVectors.L{iBand}));
+        legend('target','interferer')
+        ylim(AlgorithmParameters.p0SearchRangeHz)
+    
+        subplot(1,2,2)
+        title('Processed periodic samples - Right channel')
+        xlabel('signal sample indices')
+        ylabel('detected frequency (Hz)')
+        hold on;
+        scatter(targetSampleIndices.R{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.targetp0DetectedIndexVectors.R{iBand}));
+        scatter(interfSampleIndices.R{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.interfp0DetectedIndexVectors.R{iBand}));
+        legend('target','interferer')
+        ylim(AlgorithmParameters.p0SearchRangeHz)
+    end
+end
