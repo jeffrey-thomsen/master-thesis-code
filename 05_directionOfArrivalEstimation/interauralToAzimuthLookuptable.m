@@ -1,37 +1,47 @@
 % generate an IPD/ITD-to-azimuth mapping function in form of a polynomial
 % hrtf - SOFA file
-% AlgorithmParameters - struct
+% AlgorithmParameters - struct containing the necessary parameters
 function [lookuptable, ivsArray] = ...
-  interauralToAzimuthLookuptable(hrtf, AlgorithmParameters)
+  interauralToAzimuthLookuptable(hrtf, AlgorithmParameters, varargin)
 
     %% Configuration
     
-    samplingRateHz = AlgorithmParameters.Gammatone.samplingRateHz;
-    
-    % length of noise signal used for the calculation (samples)
-    nSamples = 1*samplingRateHz;
-    
+    samplingRateHzHRTF = hrtf.Data.SamplingRate;
+    AlgorithmParameters.Gammatone.samplingRateHz = samplingRateHzHRTF;
+
     % initialize filter states for interaural feature computation
     [FilterStates, nBands] = ...
         AlgorithmStatesConstructor(AlgorithmParameters);
     AlgorithmParameters.Gammatone.nBands = nBands;
     
     Obj = hrtf;
-    
+
     polynomialOrder = 12; % Dietz2011 paper says 9;
     
     %% Preparation
-    
-    % generate noise signal
-%     noiseSignal = randn(nSamples,1);
-%     % normalize noise signal
-%     noiseSignal = noiseSignal - mean(noiseSignal);
-%     noiseSignal = noiseSignal/max(abs(noiseSignal));
-    % alternative tonal signal
-    % noiseSignal = sin(2*pi*10000*(1/samplingRateHz:1/samplingRateHz:1))';
-    [noiseSignal,~]=audioread('sp01.wav');
-    [noiseSignal2,~]=audioread('sp30.wav');
-    noiseSignal = [noiseSignal; noiseSignal2];
+
+    trainingSignal = [];
+    if nargin > 2
+        for iFile = 1:numel(varargin)
+            % load training signal
+            [signal, samplingRateHzSignal] = audioread(varargin{iFile}); %'sp01.wav');
+            % adjust sampling rate to HRTF
+            signal = resample(signal, samplingRateHzHRTF, samplingRateHzSignal);
+            % append to training signal
+            trainingSignal = [trainingSignal; signal];
+        end
+        
+    else
+        % length of noise signal used for the calculation (samples)
+        nSamples = 1*samplingRateHz;
+        % generate noise signal
+        trainingSignal = randn(nSamples,1);
+        % alternative tonal signal
+        % trainingSignal = sin(2*pi*10000*(1/samplingRateHz:1/samplingRateHz:1))';
+    end
+    % normalize training signal
+    trainingSignal = trainingSignal - mean(trainingSignal);
+    trainingSignal = trainingSignal/max(abs(trainingSignal));
     
     % use only the -90 to 90 degree part of the HRIR set
     elevationAngleDeg = 0;
@@ -59,21 +69,21 @@ function [lookuptable, ivsArray] = ...
     for iAzimuth = 1:nAzimuth
     
         % generate noise coming from the given direction
-        inputSignal = SOFAspat(noiseSignal, hrtf,...
+        inputSignal = SOFAspat(trainingSignal, hrtf,...
             azimuthAngleDeg(iAzimuth), elevationAngleDeg);
     
         % gammatone analysis filterbank - decompose signal into frequency bands
         subbandSignalArray = ...
             subbandDecompositionBinaural(inputSignal, FilterStates);
 
-        % compute of interaural features
+        % compute interaural features
         [ipdRadCells, ivsCells, ~, ~, ~, itdSecCells, ~] = ...
             interauralFeatureComputation(subbandSignalArray, ...
             AlgorithmParameters, FilterStates);
     
         ivsCellsCells{iAzimuth} = ivsCells;
     
-        % calculate the mean over time of the IPD for each gammatone band
+        % calculate the mean over time of the IPD/ITD for each gammatone band
         for iBand = 1:nBands
             ipdRadMedianArray{iBand}(iAzimuth) = median(ipdRadCells{iBand});
             itdSecMedianArray{iBand}(iAzimuth) = median(itdSecCells{iBand});
