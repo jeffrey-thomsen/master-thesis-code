@@ -1,9 +1,13 @@
-% Divide a binaural signal into blocks reducing memory load and run the
+% Divide a binaural signal into blocks, to reduce memory load, and run the
 % Thomsen2022 speech enhancement algorithm on each block.
 % Block length can also be chosen to be 1 to showcase cauality of the
 % algorithm.
 % testSignal - Nx2 matrix containing real-valued binaural input signal
 % processedSignal - Nx2 matrix with the real-valued processed signal
+% ..Parameters - structs containing parametric information for the
+% simulation
+% AlgorithmStates - struct containing e.g. filter states that are updated
+% every sample and need to be updated for each processed block
 function [processedSignal, AlgorithmStates] = blockFeedingRoutine(testSignal, ...
   BlockFeedingParameters, AlgorithmParameters, AlgorithmStates)
 

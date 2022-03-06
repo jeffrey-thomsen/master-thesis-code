@@ -5,19 +5,29 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = harmoni
     %% remove all samples (respective azimuth estimates) for which no 
     %% periodicity was detected
 
-    % create logical array true for samples that passed the IVS mask in DOA
-    % estimation AND had periodicity detected
-    coherentPeriodicComponentLogicalVector = ...
-        ivsMask{iBand} & p0DetectedIndexVectors{iBand};
+    if AlgorithmParameters.coherenceMask
+        % create logical array true for samples that passed the IVS mask in
+        % DOA estimation AND had periodicity detected
+        coherentPeriodicComponentLogicalVector = ...
+            ivsMask{iBand} & p0DetectedIndexVectors{iBand};
+        % initialize array of length of ivsMask(=length of signal)
+        azimuthDegVector = zeros(size(ivsMask{iBand}));
+        % write azimuth values that passed IVS mask into array at correct
+        % indices
+        azimuthDegVector(ivsMask{iBand}) = azimuthDegCells{iBand};
+        % extract azimuth values that satisfy both IVS and periodic condition
+        coherentPeriodicAzimuthDegVector = ...
+            azimuthDegVector(coherentPeriodicComponentLogicalVector);
+
+    else
+        % create logical array true for samples that had periodicity detected
+        coherentPeriodicComponentLogicalVector = ...
+            logical(p0DetectedIndexVectors{iBand});
+        % extract azimuth values that satisfy periodic condition
+        coherentPeriodicAzimuthDegVector = ...
+            azimuthDegCells{iBand}(coherentPeriodicComponentLogicalVector);
+    end
     
-    % initialize array of length of ivsMask(=length of signal)
-    azimuthDegVector = zeros(size(ivsMask{iBand}));
-    % write azimuth values that passed IVS mask into array at correct
-    % indices
-    azimuthDegVector(ivsMask{iBand}) = azimuthDegCells{iBand};
-    % extract azimuth values that satisfy both IVS and periodic condition
-    coherentPeriodicAzimuthDegVector = ...
-        azimuthDegVector(coherentPeriodicComponentLogicalVector);
 
     %% evaluate target and interferer angle conditions
     targetConditionLogicalVectorReCoherentPeriodicSamples = ... % target in front
@@ -45,24 +55,39 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = harmoni
     interfererConditionLogicalVectorRePeriodicSamples = ...
         ismember(periodicSampleIndices, interfererSampleIndices);
 
-    % apply additional SNR condition
-    snrConditionLogicalVectorRePeriodicSamples = ...
-        snrDesired{iBand}>1.0001; % AlgorithmParameters.snrThresholdInDb
-    snrConditionPeriodicSampleIndices = ...
-        periodicSampleIndices(snrConditionLogicalVectorRePeriodicSamples);
+    if AlgorithmParameters.snrCondition
+        % apply additional SNR condition
+        snrConditionLogicalVectorRePeriodicSamples = ...
+            snrDesired{iBand}>1; % AlgorithmParameters.snrThresholdInDb
+        snrConditionPeriodicSampleIndices = ...
+            periodicSampleIndices(snrConditionLogicalVectorRePeriodicSamples);
+        
+        interfererConditionLogicalVectorRePeriodicSamples = ...
+            interfererConditionLogicalVectorRePeriodicSamples ...
+            & snrConditionLogicalVectorRePeriodicSamples;
+        interfererSampleIndices = ...
+            interfererSampleIndices(ismember(interfererSampleIndices, snrConditionPeriodicSampleIndices));
+    end
+
     
-    interfererConditionLogicalVectorRePeriodicSamples = ...
-        interfererConditionLogicalVectorRePeriodicSamples ...
-        & snrConditionLogicalVectorRePeriodicSamples;
-    interfererSampleIndices = ...
-        interfererSampleIndices(ismember(interfererSampleIndices, snrConditionPeriodicSampleIndices));
-    
+    if ~AlgorithmParameters.DOAProcessing
+        % control condition: apply cancellation to all detected periodic
+        % samples, regardless of coherence or angle of incidence
+        interfererSampleIndices = periodicSampleIndices;
+        interfererConditionLogicalVectorRePeriodicSamples = ...
+            ismember(periodicSampleIndices, interfererSampleIndices);
+        targetSampleIndices = [];
+        targetConditionLogicalVectorRePeriodicSamples = [];
+    end
+
     %% replace periodic samples from target and interferer angles with
     %% sigmas and deltas respectively
+
     if AlgorithmParameters.Enhancement
         subbandSignal(targetSampleIndices,iBand) = ...
             sigmaDesired{iBand}(targetConditionLogicalVectorRePeriodicSamples);
     end
+
     if AlgorithmParameters.Cancellation
         subbandSignal(interfererSampleIndices,iBand) = ...
             deltaDesired{iBand}(interfererConditionLogicalVectorRePeriodicSamples);

@@ -22,9 +22,11 @@ function azimuthDegCells = azimuthEstimation(ipdRad, itdSec, ...
 %         azimuthDeg = ipdToAzimuthMapping(itdSec{iBand}, ...
 %             AlgorithmParameters.itdLookuptable{iBand});
         
-        % apply binary IVS filter mask - remove all azimuth estimates for 
-        % which coherence criteria were not met
-        azimuthDeg = azimuthDeg(ivsMask{iBand});
+        if AlgorithmParameters.coherenceMask
+            % apply binary IVS filter mask - remove all azimuth estimates for 
+            % which coherence criteria were not met
+            azimuthDeg = azimuthDeg(ivsMask{iBand});
+        end
         
         % write computed values into structs for enhancement stage
         azimuthDegCells{iBand} = azimuthDeg;

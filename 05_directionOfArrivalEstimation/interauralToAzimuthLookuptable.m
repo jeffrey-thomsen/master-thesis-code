@@ -30,15 +30,13 @@ function [lookuptable, ivsArray] = ...
             % append to training signal
             trainingSignal = [trainingSignal; signal];
         end
-        
     else
         % length of noise signal used for the calculation (samples)
-        nSamples = 1*samplingRateHz;
+        nSamples = 1*samplingRateHzHRTF;
         % generate noise signal
         trainingSignal = randn(nSamples,1);
-        % alternative tonal signal
-        % trainingSignal = sin(2*pi*10000*(1/samplingRateHz:1/samplingRateHz:1))';
     end
+
     % normalize training signal
     trainingSignal = trainingSignal - mean(trainingSignal);
     trainingSignal = trainingSignal/max(abs(trainingSignal));
@@ -140,12 +138,12 @@ function [lookuptable, ivsArray] = ...
 % %     end
 
     %% for testing the IVS
-    ivsArray = zeros(iAzimuth, iBand);
-    for iAzimuth = 1:nAzimuth
-        for iBand = 1:nBands
-           ivsArray(iAzimuth, iBand) = ...
-               numel(find(ivsCellsCells{iAzimuth}{iBand}));
-        end
-    end
+%     ivsArray = zeros(iAzimuth, iBand);
+%     for iAzimuth = 1:nAzimuth
+%         for iBand = 1:nBands
+%            ivsArray(iAzimuth, iBand) = ...
+%                numel(find(ivsCellsCells{iAzimuth}{iBand}));
+%         end
+%     end
 
 end

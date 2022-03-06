@@ -13,15 +13,18 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
 
     AlgorithmParameters.Gammatone = GammatoneParameters;
 
-    AlgorithmParameters.lookuptableType = 'itd'; % 'ipd' or 'itd'
+    AlgorithmParameters.lookuptableType = 'itd'; % 'ipd' or 'itd' to azimuth mapping
 
     AlgorithmParameters.p0SearchRangeHz = [100 500]; % Bruemann2018
     AlgorithmParameters.snrLPFilterTau = 0.04; % Bruemann2018
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
     AlgorithmParameters.nCyclesTau = 5; % Dietz2011
-    AlgorithmParameters.snrThresholdInDb = 0;
+    AlgorithmParameters.snrThresholdInDb = 0; % Bruemann2018
 
     AlgorithmParameters.Cancellation = true;
     AlgorithmParameters.Enhancement = true;
+    AlgorithmParameters.coherenceMask = true;
+    AlgorithmParameters.snrCondition = true;
+    AlgorithmParameters.DOAProcessing = true;
 
 end

@@ -19,7 +19,9 @@ TargetAngleParameters = struct;
 BlockFeedingParameters = struct;
 AlgorithmParameters = AlgorithmParametersConstructor();
 
+% Alterations
 AlgorithmParameters.p0SearchRangeHz = [100 350];
+AlgorithmParameters.DOAProcessing = true;
 
 % load HRTF
 hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
@@ -48,8 +50,8 @@ AlgorithmParameters.Gammatone.samplingRateHz = ...
 %% Generate test signal
 
 % load clean speech signals
-[targetSignal,fsTarget]=audioread('intelligence_16.wav');%'sp01.wav');
-[interfSignal,fsInterf]=audioread('storylines_16.wav');%'sp30.wav');
+[targetSignal,fsTarget]=audioread('intelligence_16.wav');%'p298_097.wav');%'sp01.wav');
+[interfSignal,fsInterf]=audioread('storylines_16.wav');%'p313_256.wav');%'sp30.wav');
 
 % adjust sampling rate to HRTF
 targetSignal = resample(targetSignal,hrtf.Data.SamplingRate,fsTarget);
@@ -86,90 +88,80 @@ mixedSignal = testInputSignal(mixedSignal);
 %     AlgorithmParameters, AlgorithmStates);
 % toc
 tic
-[enhancedMixedSignal, AlgorithmStatesMixed, p0DetectedIndexVectorsMixed, ...
-    p0SearchRangeSamplesVectorMixed, ipdRadMixed, ivsMaskMixed, ...
-    ipdDisambiguatedLogicalCellsMixed, azimuthDegCellsMixed,...
-    targetSampleIndicesMixed, interfSampleIndicesMixed] = ...
+[enhancedSignalMixed, AlgorithmStatesMixed, dataMixed] = ...
     speechEnhancement(mixedSignal, AlgorithmParameters, AlgorithmStates);
 toc
-enhancedMixedSignal = enhancedMixedSignal./max(max(abs(enhancedMixedSignal)));
-%% Evaluation
+enhancedSignalMixed = enhancedSignalMixed./max(max(abs(enhancedSignalMixed)));
+%% Evaluation of mixed speech
 
-evalMixed = evaluateAlgorithm(p0DetectedIndexVectorsMixed, AlgorithmParameters, ...
-    p0SearchRangeSamplesVectorMixed, mixedSignal, ivsMaskMixed, ...
-    azimuthDegCellsMixed, targetSampleIndicesMixed, interfSampleIndicesMixed);
+evalMixed = evaluateAlgorithm(dataMixed.p0DetectedIndexVectors, AlgorithmParameters, ...
+    dataMixed.p0SearchRangeSamplesVector, mixedSignal, dataMixed.ivsMaskCells, ...
+    dataMixed.azimuthDegCells, dataMixed.targetSampleIndices, dataMixed.interfSampleIndices);
 
-%% Compare to target speech
+%% Process target speech
 tic
-[enhancedTargetSignal, AlgorithmStates, p0DetectedIndexVectorsTarget, ...
-    p0SearchRangeSamplesVectorTarget, ipdRadTarget, ivsMaskTarget, ...
-    ipdDisambiguatedLogicalCellsTarget, azimuthDegCellsTarget,...
-    targetSampleIndicesTarget, interfSampleIndicesTarget] = ...
+[enhancedSignalTarget, AlgorithmStates, dataTarget] = ...
     speechEnhancement(targetSignal, AlgorithmParameters, AlgorithmStates);
 toc
-enhancedTargetSignal = enhancedTargetSignal./max(max(abs(enhancedTargetSignal)));
-%% Evaluation
+enhancedSignalTarget = enhancedSignalTarget./max(max(abs(enhancedSignalTarget)));
+%% Evaluation of target speech
 
-evalTarget = evaluateAlgorithm(p0DetectedIndexVectorsTarget, AlgorithmParameters, ...
-    p0SearchRangeSamplesVectorTarget, targetSignal, ivsMaskTarget, ...
-    azimuthDegCellsTarget, targetSampleIndicesTarget, interfSampleIndicesTarget);
+evalTarget = evaluateAlgorithm(dataTarget.p0DetectedIndexVectors, AlgorithmParameters, ...
+    dataTarget.p0SearchRangeSamplesVector, mixedSignal, dataTarget.ivsMaskCells, ...
+    dataTarget.azimuthDegCells, dataTarget.targetSampleIndices, dataTarget.interfSampleIndices);
 
-%% Compare to interferer speech
+%% Process interferer speech
 tic
-[enhancedInterfSignal, AlgorithmStatesInterf, p0DetectedIndexVectorsInterf, ...
-    p0SearchRangeSamplesVectorInterf, ipdRadInterf, ivsMaskInterf, ...
-    ipdDisambiguatedLogicalCellsInterf, azimuthDegCellsInterf,...
-    targetSampleIndicesInterf, interfSampleIndicesInterf] = ...
+[enhancedSignalInterf, AlgorithmStatesInterf, dataInterf] = ...
     speechEnhancement(interfSignal, AlgorithmParameters, AlgorithmStates);
 toc
-enhancedInterfSignal = enhancedInterfSignal./max(max(abs(enhancedInterfSignal)));
-%% Evaluation
+enhancedSignalInterf = enhancedSignalInterf./max(max(abs(enhancedSignalInterf)));
+%% Evaluation of interferer speech
 
-evalInterf = evaluateAlgorithm(p0DetectedIndexVectorsInterf, AlgorithmParameters, ...
-    p0SearchRangeSamplesVectorInterf, interfSignal, ivsMaskInterf, ...
-    azimuthDegCellsInterf, targetSampleIndicesInterf, interfSampleIndicesInterf);
+evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, AlgorithmParameters, ...
+    dataInterf.p0SearchRangeSamplesVector, mixedSignal, dataInterf.ivsMaskCells, ...
+    dataInterf.azimuthDegCells, dataInterf.targetSampleIndices, dataInterf.interfSampleIndices);
+
 
 %% Compare coherent periodic samples detected
 
 %
-noTSIM = numel(cat(1,targetSampleIndicesMixed.L{:},targetSampleIndicesMixed.R{:}));
-noTSIT = numel(cat(1,targetSampleIndicesTarget.L{:},targetSampleIndicesTarget.R{:}));
-noTSII = numel(cat(1,targetSampleIndicesInterf.L{:},targetSampleIndicesInterf.R{:}));
+noTSIM = numel(cat(1,dataMixed.targetSampleIndices.L{:},dataMixed.targetSampleIndices.R{:}));
+noTSIT = numel(cat(1,dataTarget.targetSampleIndices.L{:},dataTarget.targetSampleIndices.R{:}));
+noTSII = numel(cat(1,dataInterf.targetSampleIndices.L{:},dataInterf.targetSampleIndices.R{:}));
 
-noISIM = numel(cat(1,interfSampleIndicesMixed.L{:},interfSampleIndicesMixed.R{:}));
-noISIT = numel(cat(1,interfSampleIndicesTarget.L{:},interfSampleIndicesTarget.R{:}));
-noISII = numel(cat(1,interfSampleIndicesInterf.L{:},interfSampleIndicesInterf.R{:}));
-
-
+noISIM = numel(cat(1,dataMixed.interfSampleIndices.L{:},dataMixed.interfSampleIndices.R{:}));
+noISIT = numel(cat(1,dataTarget.interfSampleIndices.L{:},dataTarget.interfSampleIndices.R{:}));
+noISII = numel(cat(1,dataInterf.interfSampleIndices.L{:},dataInterf.interfSampleIndices.R{:}));
 
 
 
 %% Play signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(mixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(mixedSignal, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedMixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(enhancedSignalMixed, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Play signals target
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(targetSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(targetSignal, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedTargetSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(enhancedSignalTarget, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Play signals interferer
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(interfSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(interfSignal, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedInterfSignal,AlgorithmParameters.Gammatone.samplingRateHz);
+sound(enhancedSignalInterf, AlgorithmParameters.Gammatone.samplingRateHz);
 %% Display and save data
 % audiowrite(['testInput','.wav'],mixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
 % audiowrite(['testJeffrey','.wav'],enhancedMixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
@@ -224,7 +216,7 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
         evaluation.targetp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(targetSampleIndices.R{iBand});
         evaluation.interfp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(interfSampleIndices.R{iBand});
     end
-    for iBand = [3,4,5,10,14]
+    for iBand = [3,4,5,10,14,20,25,30]
         figure;
         title('Gammatone band no.',num2str(iBand))
 

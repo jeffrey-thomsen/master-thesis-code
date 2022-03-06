@@ -6,8 +6,7 @@
 % running the simulation including filter states
 % enhancedSignal - real-valued Nx2 matrix containing the processed binaural
 % signal
-function [enhancedSignal, AlgorithmStates...
-    , p0DetectedIndexVectors, p0SearchRangeSamplesVector, ipdRadCells, ivsMaskCells, ipdDisambiguatedLogicalCells, azimuthDegCells, targetSampleIndices, interfererSampleIndices, itdSecCells, itdDisambiguatedLogicalCells] = ...
+function [enhancedSignal, AlgorithmStates, simulationData] = ...
   speechEnhancement(inputSignal, AlgorithmParameters, AlgorithmStates)
 
     % Gammatone analysis filterbank - decompose signal into frequency bands
@@ -32,11 +31,24 @@ function [enhancedSignal, AlgorithmStates...
         
         % signal enhancement - apply harmonic cancellation to unwanted 
         % periodic components
-        [enhancedSubbandSignalArray, targetSampleIndices, interfererSampleIndices] = ...
+        [enhancedSubbandSignalArray, targetSampleIndices, interfSampleIndices] = ...
             harmonicEnhancementBinaural(subbandSignalArray, azimuthDegCells, ...
             ivsMaskCells, sigmaDesired, deltaDesired, snrDesired, ...
             p0DetectedIndexVectors, AlgorithmParameters);
-
+        
+        % store data for evaluating simulation
+        simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
+        simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
+        simulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
+        simulationData.ipdRadCells = ipdRadCells;
+        simulationData.ivsMaskCells = ivsMaskCells;
+        simulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
+        simulationData.azimuthDegCells = azimuthDegCells;
+        simulationData.targetSampleIndices = targetSampleIndices;
+        simulationData.interfSampleIndices = interfSampleIndices;
+        simulationData.itdSecCells = itdSecCells;
+        simulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
+    
     else % just for testing the gammatone filterbank without processing
         enhancedSubbandSignalArray = subbandSignalArray;
     end
@@ -45,4 +57,6 @@ function [enhancedSignal, AlgorithmStates...
     [enhancedSignal, AlgorithmStates] = ...
         subbandResynthesisBinaural(enhancedSubbandSignalArray, ...
         AlgorithmStates);
+
+   
 end

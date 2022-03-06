@@ -40,6 +40,7 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
         %% IVS
         [ivsMask, States.Binaural] = calcIvs(itf, tauS, samplingRateHz, ...
             AlgorithmParameters.ivsThreshold, States.Binaural);
+%         ivsMask = true(size(ivsMask));
 
         %% IPD
         ipdRad = angle(itf);
