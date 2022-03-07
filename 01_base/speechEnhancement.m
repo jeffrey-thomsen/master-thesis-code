@@ -38,7 +38,6 @@ function [enhancedSignal, AlgorithmStates, simulationData] = ...
         
         % store data for evaluating simulation
         simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
-        simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
         simulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
         simulationData.ipdRadCells = ipdRadCells;
         simulationData.ivsMaskCells = ivsMaskCells;
@@ -51,6 +50,7 @@ function [enhancedSignal, AlgorithmStates, simulationData] = ...
     
     else % just for testing the gammatone filterbank without processing
         enhancedSubbandSignalArray = subbandSignalArray;
+        simulationData = 'No simulation data. Only gammatone decomposition and resynthesis.';
     end
     
     % Gammatone synthesis filterbank - resynthesize enhanced subband signals

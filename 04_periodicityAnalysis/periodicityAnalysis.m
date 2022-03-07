@@ -42,6 +42,18 @@ function [sigmaCells, deltaCells, snrCells, ...
 
         % compute sigma and delta values for all p0 in search range from
         % normalized subband signal
+        if AlgorithmParameters.ChenP0Detection
+            % like in Chen2015, use envelope for center frequencies above
+            % 1.5kHz, use regular output below.
+            if AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz(iBand)>1500
+                normalizedSubbandSignal.L = abs(subbandSignal.L);
+                normalizedSubbandSignal.R = abs(subbandSignal.R);
+            else
+                normalizedSubbandSignal.L = subbandSignal.L;
+                normalizedSubbandSignal.R = subbandSignal.R;
+            end
+        end
+        
         [normalizedSigma, normalizedDelta, States] = ...
             calcSigmaDeltaBinaural(normalizedSubbandSignal, ...
             p0SearchRangeSamplesVector, States, 'range');

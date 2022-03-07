@@ -18,7 +18,6 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = harmoni
         % extract azimuth values that satisfy both IVS and periodic condition
         coherentPeriodicAzimuthDegVector = ...
             azimuthDegVector(coherentPeriodicComponentLogicalVector);
-
     else
         % create logical array true for samples that had periodicity detected
         coherentPeriodicComponentLogicalVector = ...
@@ -34,6 +33,8 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = harmoni
         abs(coherentPeriodicAzimuthDegVector) <= 5;
     interfererConditionLogicalVectorReCoherentPeriodicSamples = ... % interference from the sides
         abs(coherentPeriodicAzimuthDegVector) > 5;
+%         coherentPeriodicAzimuthDegVector > 50 & ...
+%         coherentPeriodicAzimuthDegVector < 70;
 
     % extract signal index values for which IVS and periodic condition hold
     coherentPeriodicSampleIndices = ...

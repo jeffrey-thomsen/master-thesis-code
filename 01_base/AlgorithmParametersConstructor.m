@@ -21,10 +21,13 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.nCyclesTau = 5; % Dietz2011
     AlgorithmParameters.snrThresholdInDb = 0; % Bruemann2018
 
-    AlgorithmParameters.Cancellation = true;
-    AlgorithmParameters.Enhancement = true;
+    AlgorithmParameters.ChenP0Detection = false;
     AlgorithmParameters.coherenceMask = true;
+    AlgorithmParameters.azimuthPooling = false;
     AlgorithmParameters.snrCondition = true;
     AlgorithmParameters.DOAProcessing = true;
+    AlgorithmParameters.Cancellation = true;
+    AlgorithmParameters.Enhancement = true;
+
 
 end

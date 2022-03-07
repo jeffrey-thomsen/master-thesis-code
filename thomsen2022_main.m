@@ -21,22 +21,30 @@ AlgorithmParameters = AlgorithmParametersConstructor();
 
 % Alterations
 AlgorithmParameters.p0SearchRangeHz = [100 350];
-AlgorithmParameters.DOAProcessing = true;
+AlgorithmParameters.ChenP0Detection = false;
+AlgorithmParameters.coherenceMask   = true;
+AlgorithmParameters.azimuthPooling  = false;
+AlgorithmParameters.snrCondition    = true;
+AlgorithmParameters.DOAProcessing   = true;
+AlgorithmParameters.Cancellation    = true;
+AlgorithmParameters.Enhancement     = true;
+AlgorithmParameters.snrLPFilterTau = 0.04;
+AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
+AlgorithmParameters.nCyclesTau = 5; % Dietz2011
 
 % load HRTF
-hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
+hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
 AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
-
-% training data strings
-
 
 % generate/load IPD-to-azimuth mapping function
 tic
-lookuptable = load('2022-03-04_itd_lookuptable.mat');
+load('2022-03-04_itd_lookuptable_annotated.mat');
 lookuptable = lookuptable.lookuptable;
 AlgorithmParameters.lookuptable = lookuptable;
-%     interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,...
-%     'intelligence_16.wav', 'storylines_16.wav');
+% lookuptable = interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,...
+%     'intelligence_16.wav', 'storylines_16.wav', 'shellshock_16.wav', ...
+%     'peaches_16.wav', 'p360_253.wav', 'p313_256.wav', 'p298_097.wav', ...
+%     'p237_079.wav', 'p234_003.wav', '2078-142845-0002.flac');
 toc
 
 % set sampling frequency to at least 2x upper gammatone centre frequency
@@ -47,11 +55,12 @@ AlgorithmParameters.Gammatone.samplingRateHz = ...
 [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
     AlgorithmStatesConstructor(AlgorithmParameters);
 
+centerFreqsHz = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
 %% Generate test signal
 
 % load clean speech signals
-[targetSignal,fsTarget]=audioread('intelligence_16.wav');%'p298_097.wav');%'sp01.wav');
-[interfSignal,fsInterf]=audioread('storylines_16.wav');%'p313_256.wav');%'sp30.wav');
+[targetSignal,fsTarget]=audioread('p298_097.wav');%'intelligence_16.wav');%%'sp01.wav');
+[interfSignal,fsInterf]=audioread('p313_256.wav');%'storylines_16.wav');%%'sp30.wav');
 
 % adjust sampling rate to HRTF
 targetSignal = resample(targetSignal,hrtf.Data.SamplingRate,fsTarget);
@@ -82,6 +91,10 @@ mixedSignal = mixedSignal./max(max(mixedSignal));
 % testSignal = testSignalGenerator;
 mixedSignal = testInputSignal(mixedSignal);
 
+% time vector for plotting
+dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
+timeVec = dt:dt:dt*length(mixedSignal);
+
 %% Block-feeding routine - Speech enhancement algorithm
 % tic
 % processedSignal = blockFeedingRoutine(testSignal,BlockFeedingParameters,...
@@ -95,8 +108,8 @@ enhancedSignalMixed = enhancedSignalMixed./max(max(abs(enhancedSignalMixed)));
 %% Evaluation of mixed speech
 
 evalMixed = evaluateAlgorithm(dataMixed.p0DetectedIndexVectors, AlgorithmParameters, ...
-    dataMixed.p0SearchRangeSamplesVector, mixedSignal, dataMixed.ivsMaskCells, ...
-    dataMixed.azimuthDegCells, dataMixed.targetSampleIndices, dataMixed.interfSampleIndices);
+    dataMixed.p0SearchRangeSamplesVector, mixedSignal, timeVec, dataMixed.ivsMaskCells, ...
+    dataMixed.azimuthDegCells, dataMixed.targetSampleIndices, dataMixed.interfSampleIndices, centerFreqsHz);
 
 %% Process target speech
 tic
@@ -107,8 +120,8 @@ enhancedSignalTarget = enhancedSignalTarget./max(max(abs(enhancedSignalTarget)))
 %% Evaluation of target speech
 
 evalTarget = evaluateAlgorithm(dataTarget.p0DetectedIndexVectors, AlgorithmParameters, ...
-    dataTarget.p0SearchRangeSamplesVector, mixedSignal, dataTarget.ivsMaskCells, ...
-    dataTarget.azimuthDegCells, dataTarget.targetSampleIndices, dataTarget.interfSampleIndices);
+    dataTarget.p0SearchRangeSamplesVector, targetSignal, timeVec, dataTarget.ivsMaskCells, ...
+    dataTarget.azimuthDegCells, dataTarget.targetSampleIndices, dataTarget.interfSampleIndices, centerFreqsHz);
 
 %% Process interferer speech
 tic
@@ -119,8 +132,8 @@ enhancedSignalInterf = enhancedSignalInterf./max(max(abs(enhancedSignalInterf)))
 %% Evaluation of interferer speech
 
 evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, AlgorithmParameters, ...
-    dataInterf.p0SearchRangeSamplesVector, mixedSignal, dataInterf.ivsMaskCells, ...
-    dataInterf.azimuthDegCells, dataInterf.targetSampleIndices, dataInterf.interfSampleIndices);
+    dataInterf.p0SearchRangeSamplesVector, interfSignal, timeVec, dataInterf.ivsMaskCells, ...
+    dataInterf.azimuthDegCells, dataInterf.targetSampleIndices, dataInterf.interfSampleIndices, centerFreqsHz);
 
 
 %% Compare coherent periodic samples detected
@@ -168,8 +181,8 @@ sound(enhancedSignalInterf, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Auxiliary functions
 function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
-    AlgorithmParameters, p0SearchRangeSamplesVector, testSignal, ...
-    ivsMask, azimuthDegCells, targetSampleIndices, interfSampleIndices)
+    AlgorithmParameters, p0SearchRangeSamplesVector, testSignal, timeVec, ...
+    ivsMask, azimuthDegCells, targetSampleIndices, interfSampleIndices, fc)
 
     [evaluation.GC,evaluation.GR] = groupcounts(cat(1,p0DetectedIndexVectors.L{:},...
         p0DetectedIndexVectors.R{:}));
@@ -178,34 +191,38 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     evaluation.p0SearchRangeFreqVector = ...
         AlgorithmParameters.Gammatone.samplingRateHz./p0SearchRangeSamplesVector;
     
-%     figure;
-%     title('p0 detection histogram')
-%     xlabel('Frequency (Hz)')
-%     ylabel('No. of occurences in subband samples')
-%     hBar = bar(evaluation.p0SearchRangeFreqVector(evaluation.GR),...
-%         evaluation.GC);
-%     set(gca,'XScale','log');
+    figure;
+    hBar = bar(evaluation.p0SearchRangeFreqVector(evaluation.GR),...
+        evaluation.GC);
+    set(gca,'XScale','log');
+    title('p0 detection histogram')
+    xlabel('Frequency (Hz)')
+    ylabel('No. of occurences in subband samples')
 
     meanTestSignal = (testSignal(:,1) + testSignal(:,2))./2;
-%     figure;
-%     title('signal spectrogram')
-%     spectrogram(meanTestSignal,hamming(1000),[],[],...
-%         AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
-    
+    figure;
+    spectrogram(meanTestSignal,hamming(1000),[],[],...
+        AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
+    title('signal spectrogram')
+
     evaluation.azDeg = zeros(30,length(ivsMask{1}));
     for iBand = 1:30
-        evaluation.azDeg(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
+        if AlgorithmParameters.coherenceMask
+            evaluation.azDeg(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
+        else
+            evaluation.azDeg(iBand,:) = azimuthDegCells{iBand};
+        end
         evaluation.coherentPeriodicComponentLogicalVector.L(iBand,:) = ...
             ivsMask{iBand} & p0DetectedIndexVectors.L{iBand};
         evaluation.coherentPeriodicComponentLogicalVector.R(iBand,:) = ...
             ivsMask{iBand} & p0DetectedIndexVectors.R{iBand};
     end
     
-%     figure;
-%     title('DOA estimation histogram')
-%     xlabel('azimuth (Degrees)')
-%     ylabel('No. of occurences in subband samples')
-%     histogram(nonzeros(evaluation.azDeg(abs(evaluation.azDeg)<90)))
+    figure;
+    histogram(nonzeros(evaluation.azDeg(abs(evaluation.azDeg)<90)))
+    title('DOA estimation histogram')
+    xlabel('azimuth (Degrees)')
+    ylabel('No. of occurences in subband samples')
     
     evaluation.periodicityRatio = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(testSignal);
     evaluation.doaRatio = (numel(nonzeros(evaluation.azDeg))/30)/length(testSignal);
@@ -216,28 +233,33 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
         evaluation.targetp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(targetSampleIndices.R{iBand});
         evaluation.interfp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(interfSampleIndices.R{iBand});
     end
-    for iBand = [3,4,5,10,14,20,25,30]
+    for iBand = [5]%[3,4,5,10,14,20,25,30]
         figure;
-        title('Gammatone band no.',num2str(iBand))
 
         subplot(1,2,1)
-        title('Processed periodic samples - Left channel')
-        xlabel('signal sample indices')
+        title('Left channel')
+        xlabel('Time (sec)')
         ylabel('detected frequency (Hz)')
         hold on;
-        scatter(targetSampleIndices.L{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.targetp0DetectedIndexVectors.L{iBand}));
-        scatter(interfSampleIndices.L{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.interfp0DetectedIndexVectors.L{iBand}));
+        scatter(timeVec(targetSampleIndices.L{iBand}), ...
+            evaluation.p0SearchRangeFreqVector(evaluation.targetp0DetectedIndexVectors.L{iBand}));
+        scatter(timeVec(interfSampleIndices.L{iBand}), ...
+            evaluation.p0SearchRangeFreqVector(evaluation.interfp0DetectedIndexVectors.L{iBand}));
         legend('target','interferer')
         ylim(AlgorithmParameters.p0SearchRangeHz)
     
         subplot(1,2,2)
-        title('Processed periodic samples - Right channel')
-        xlabel('signal sample indices')
+        title('Right channel')
+        xlabel('Time (sec)')
         ylabel('detected frequency (Hz)')
         hold on;
-        scatter(targetSampleIndices.R{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.targetp0DetectedIndexVectors.R{iBand}));
-        scatter(interfSampleIndices.R{iBand}, evaluation.p0SearchRangeFreqVector(evaluation.interfp0DetectedIndexVectors.R{iBand}));
+        scatter(timeVec(targetSampleIndices.R{iBand}), ...
+            evaluation.p0SearchRangeFreqVector(evaluation.targetp0DetectedIndexVectors.R{iBand}));
+        scatter(timeVec(interfSampleIndices.R{iBand}), ...
+            evaluation.p0SearchRangeFreqVector(evaluation.interfp0DetectedIndexVectors.R{iBand}));
         legend('target','interferer')
         ylim(AlgorithmParameters.p0SearchRangeHz)
+        
+        sgtitle(['Processed periodic samples - Gammatone band no. ',num2str(iBand),' fc=',num2str(fc(iBand),'%.0f'),'Hz'])
     end
 end

@@ -853,11 +853,3 @@ matlabOutput = filter([1-a], [1, -a], inputSignal);
 % Verify
 verifyEqual(testCase, ownOutput, matlabOutput)
 end
-
-%% testing algorithm parameters
-
-%     AlgorithmParameters.Cancellation = true;
-%     AlgorithmParameters.Enhancement = true;
-%     AlgorithmParameters.coherenceMask = true;
-%     AlgorithmParameters.snrCondition = true;
-%     AlgorithmParameters.DOAProcessing = true;
