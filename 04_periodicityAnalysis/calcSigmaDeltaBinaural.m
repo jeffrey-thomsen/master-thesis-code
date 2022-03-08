@@ -1,3 +1,23 @@
+% Calculate sigma and delta values from a set of binaural subband signals
+% for period values specified in p0SearchRangeSamplesVector
+%
+% Input:
+% subbandSignal - struct containing a subband signal from the left and
+% right channel
+% p0SearchRangeSamplesVector - index range vector specifying the p0 search
+% range period values in samples
+% FilterStates - struct containing the FIFOs used to store the past signal
+% samples needed for sigma and delta calculation
+% mode - string 'range' or 'discrete' specifying the operation mode
+% varargin - if mode is 'discrete', must be a struct containing p0
+% candidate index vectors for the left and right channel, specifiyng which
+% period to apply to which subband samples in discrete sigma and delta
+% calculation
+%
+% Output:
+% FilterStates - see above
+% delta, sigma - structs containing the calculated values for the left and
+% right channel
 function [sigma, delta, FilterStates] = ...
   calcSigmaDeltaBinaural(subbandSignal, p0SearchRangeSamplesVector, ...
   FilterStates, mode, varargin)

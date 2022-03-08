@@ -1,3 +1,13 @@
+% Map interaural parameters (IPD or ITD) to azimuth angles of incidence in
+% degrees using a corresponding mapping function (polynomial)
+%
+% Input:
+% interauralParameter - vector of numeric values (IPD in radians or ITD in
+% seconds)
+% lookuptable - struct containing the mapping polynomial coefficients
+%
+% Output:
+% azimuthDeg - vector of azimuth values in degrees
 function azimuthDeg = interauralToAzimuthMapping(interauralParameter, lookuptable)
     
     % by calling the output S and MU, phi is z-scored, thus improving the

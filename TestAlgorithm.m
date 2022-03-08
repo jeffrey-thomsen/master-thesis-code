@@ -23,8 +23,8 @@ classdef TestAlgorithm < matlab.unittest.TestCase
             AlgorithmParameters.DOAProcessing   = DOAProcessing;
             AlgorithmParameters.Cancellation    = Cancellation;
             AlgorithmParameters.Enhancement     = Enhancement;
-            lookuptable = load('2022-03-04_itd_lookuptable.mat');
-            lookuptable = lookuptable.lookuptable;
+            lookuptable = load('2022-03-07_itd_lookuptable_annotated.mat');
+            lookuptable = lookuptable.lookuptable.lookuptable;
             AlgorithmParameters.lookuptable = lookuptable;
             [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
                 AlgorithmStatesConstructor(AlgorithmParameters);

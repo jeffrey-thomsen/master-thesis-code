@@ -1,12 +1,16 @@
-% Takes a binaural pair signals, corresponding gammatone analysis
-% filterbank paramters, filter states and hands the individual
+% Takes a binaural pair of signals, corresponding gammatone analysis
+% filterbank parameters, filter states and hands the individual
 % left and right channels to subbandDecomposition.m
+%
+% Input:
 % inputSignal - Nx2 matrix containing the real-valued binaural signal
-% AlgorithmParameters - struct containing a struct with filter parameters
-% and filter states for the gammatone analysis filterbank for each the 
-% left and right channel signals
+% AlgorithmStates - struct containing filter parameters and states for the 
+% gammatone analysis filterbank for both the left and right channel signals
+%
+% Output:
 % subbandSignals - struct containing a set of complex-valued subband 
 % signals for the left and right channel
+% AlgorithmStates - see above
 function [subbandSignals, AlgorithmStates] = ...
   subbandDecompositionBinaural(inputSignal, AlgorithmStates)
 

@@ -1,3 +1,14 @@
+% Find the maximum SNR (periodicity) value among a range of period values
+% for each signal sample
+%
+% Input:
+% snr - struct containing arrays of SNR values of the left and right
+% channel
+%
+% Output:
+% p0CandidateVector - struct containing the indices of the maximal SNR
+% value for each subband signal sample, or 0 if no maximum is found for a
+% sample, of the left and right channel
 function p0CandidateIndexVector = subbandSnrPeakDetectionBinaural(snr)
     p0CandidateIndexVector.L = subbandSnrPeakDetection(snr.L);
     p0CandidateIndexVector.R = subbandSnrPeakDetection(snr.R);

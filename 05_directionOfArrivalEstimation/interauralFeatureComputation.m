@@ -1,8 +1,34 @@
+% Interaural feature computaiton of the Thomsen2022 speech enhancement
+% algorithm. Uses a set of binaural signals that has been decomposed by a
+% gammatone filterbank and returns IPD, ILD and ITD values and an IVS
+% coherence mask for each subband sample
+%
+% N - length of signal
+% M - number of subbands
+%
+% Input:
+% subbandSignalArray - struct containing NxM arrays of complex-valued
+% subband samples from a gammatone filterbank, for left and right channel
+% AlgorithmParameters - struct containing all simulation parameters
+% AlgorithmStates - struct containing filter states and FIFO arrays that
+% need to be handed over to the next signal block/sample to be processed
+%
+% Output:
+% ipdCells, ildCells, itdCells - cells of size M containing IPD values in
+% rad, ILD values in dB and ITD values in seconds for each subband sample
+% ivsCells - cell of size M containing the coherence masks for each subband
+% signal in the form of a logical vector
+% ipdDisambiguatedLogicalCells, itdDisambiguatedLogicalCells - cells of
+% size M containing logical arrays determining whether an IPD or ITD value
+% was disambiguated by the ILD criterion (for algorithm evaluation purposes
+% only)
 function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogicalCells, itdCells, itdDisambiguatedLogicalCells] = ...
   interauralFeatureComputation(subbandSignalArray, AlgorithmParameters, ...
   AlgorithmStates)
 
     samplingRateHz = AlgorithmParameters.Gammatone.samplingRateHz;
+
+    % calculate time constants for the LP filters used in each subband
     centerFreqsHz = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
     cycleDurationSeconds = 1./centerFreqsHz;
     tau = AlgorithmParameters.nCyclesTau.*cycleDurationSeconds;
@@ -66,6 +92,7 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
 
         itdSecDisambiguated = dietz2011_unwrapitd(itdSec,ildDb,instFreq);
         itdDisambiguatedLogical = itdSec ~= itdSecDisambiguated;
+
         %% write states back into global structs
         AlgorithmStates.L.ProcessingStates{iBand} = States.L;
         AlgorithmStates.R.ProcessingStates{iBand} = States.R;
@@ -81,47 +108,53 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
     end
 end
 
-function [f_inst, States] = calcInstFreq(sig, fs, States)
-  % function f_inst = calc_f_inst(sig,fs);
-  %
-  % Calculates instantaneous frequency from a complex (analytical) signal
-  % using first order differences
-  %
-  % input parameters:
-  %   sig  : complex (analytical) input signal
-  %   fs   : sampling frequency of sig
-  %
-  % output values:
-  %   f_inst:   vector of estimated inst. frequency values
-  %
-  % copyright: Universitaet Oldenburg
-  % author   : volker hohmann
-  % date     : 12/2004
-  %
-  % adapted by Jeffrey Thomsen for sample or block-based processing 03/2022
-
-  % handle signal samples for relay processing
-  sig = [States.instFreqPreviousValue; sig];
-  States.instFreqPreviousValue = sig(end);
-  
-  % original computation
-  sig = sig./(abs(sig)+eps);
-
-  f_inst = [sig(2:end).*conj(sig(1:end-1))];
-  f_inst = angle(f_inst)/2/pi*fs;
+function [instFrequency, States] = ...
+  calcInstFreq(signal, samplingRateHz, States)
+    % function f_inst = calcInstFreq(sig,fs);
+    %
+    % Calculates instantaneous frequency from a complex (analytical) signal
+    % using first order differences
+    %
+    % input parameters:
+    %   signal: complex (analytical) input signal
+    %   samplingRateHz: sampling frequency of signal
+    %   States: struct containing the final signal value from the
+    %   previously processed block
+    %
+    % output values:
+    %   instFrequency: vector of estimated instantaneous frequency values
+    %   States: see above
+    %
+    % copyright: Universitaet Oldenburg
+    % author   : volker hohmann
+    % date     : 12/2004
+    %
+    % adapted by Jeffrey Thomsen for sample or block-based processing 03/2022
+    
+    % handle signal samples for relay processing
+    signal = [States.instFreqPreviousValue; signal];
+    States.instFreqPreviousValue = signal(end);
+    
+    % original computation
+    signal = signal./(abs(signal)+eps);
+    
+    instFrequency = signal(2:end) .* conj(signal(1:end-1));
+    instFrequency = angle(instFrequency)/2/pi*samplingRateHz;
 end
 
-function itd = dietz2011_unwrapitd(itd,ild,f_inst,tr)
-    %% ===== Checking of input parameters ===================================
+function itd = dietz2011_unwrapitd(itd, ild, instFrequency, thresholdDb)
+    % author: Mathias Dietz
+    % set the ITD to the sign of the ILD if it is above a certain threshold
+    %% Checking of input parameters
     nargmin = 3;
     nargmax = 4;
     narginchk(nargmin,nargmax);
     if nargin==3
-        tr = 2.5;
+        thresholdDb = 2.5;
     end
-    %% ===== Calculation ====================================================
+    %% Calculation
     itd = itd + ...
         round( ... % this will be -1,0,1
-            0.4*sign(round(ild/2 / (abs(tr)+1e-9))) - 0.4*sign(itd) ) ...
-        ./ f_inst;
+            0.4*sign(round(ild/2 / (abs(thresholdDb)+1e-9))) - 0.4*sign(itd) ) ...
+        ./ instFrequency;
 end

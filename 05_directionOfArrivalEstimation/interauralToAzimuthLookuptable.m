@@ -1,7 +1,21 @@
 % generate an IPD/ITD-to-azimuth mapping function in form of a polynomial
 % hrtf - SOFA file
-% AlgorithmParameters - struct containing the necessary parameters
-function [lookuptable, ivsArray] = ...
+% 
+% Input:
+% hrtf - SOFA file containing binaural head-related impulse responses for
+% various azimuth angles of incidence in the frontal hemisphere
+% AlgorithmParameters - struct containing the algorithm parameters used for
+% gammatone filterbank generation and interaural feature computation
+% varargin - filename strings of sound files to be used for generating the
+% mapping function. Multiple can be specified. White noise is used in case
+% none are specified.
+%
+% Output:
+% lookuptable - struct containing a set of polynomial coefficients for each
+% gammatone band, to be used for mapping ITD or IPD values from the DOA
+% estimation of the speech enhancement algorithm to azimuth values
+% (estimated angle of incidence of a sound source)
+function lookuptable = ...
   interauralToAzimuthLookuptable(hrtf, AlgorithmParameters, varargin)
 
     %% Configuration

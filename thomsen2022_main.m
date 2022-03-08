@@ -14,12 +14,12 @@ clear
 %% Preparation
 
 % initialize structs
-TestSignalParameters = struct;
-TargetAngleParameters = struct;
-BlockFeedingParameters = struct;
+% TestSignalParameters = struct;
+% TargetAngleParameters = struct;
+% BlockFeedingParameters = struct;
 AlgorithmParameters = AlgorithmParametersConstructor();
 
-% Alterations
+% Alterations of simulation parameters
 AlgorithmParameters.p0SearchRangeHz = [100 350];
 AlgorithmParameters.ChenP0Detection = false;
 AlgorithmParameters.coherenceMask   = true;
@@ -56,11 +56,12 @@ AlgorithmParameters.Gammatone.samplingRateHz = ...
     AlgorithmStatesConstructor(AlgorithmParameters);
 
 centerFreqsHz = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
+
 %% Generate test signal
 
 % load clean speech signals
-[targetSignal,fsTarget]=audioread('p298_097.wav');%'intelligence_16.wav');%%'sp01.wav');
-[interfSignal,fsInterf]=audioread('p313_256.wav');%'storylines_16.wav');%%'sp30.wav');
+[targetSignal,fsTarget] = audioread('p298_097.wav');%'intelligence_16.wav');%%'sp01.wav');
+[interfSignal,fsInterf] = audioread('p313_256.wav');%'storylines_16.wav');%%'sp30.wav');
 
 % adjust sampling rate to HRTF
 targetSignal = resample(targetSignal,hrtf.Data.SamplingRate,fsTarget);
@@ -95,7 +96,7 @@ mixedSignal = testInputSignal(mixedSignal);
 dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
 timeVec = dt:dt:dt*length(mixedSignal);
 
-%% Block-feeding routine - Speech enhancement algorithm
+%% Process mixed speech
 % tic
 % processedSignal = blockFeedingRoutine(testSignal,BlockFeedingParameters,...
 %     AlgorithmParameters, AlgorithmStates);
@@ -105,7 +106,7 @@ tic
     speechEnhancement(mixedSignal, AlgorithmParameters, AlgorithmStates);
 toc
 enhancedSignalMixed = enhancedSignalMixed./max(max(abs(enhancedSignalMixed)));
-%% Evaluation of mixed speech
+%% Evaluate mixed speech
 
 evalMixed = evaluateAlgorithm(dataMixed.p0DetectedIndexVectors, AlgorithmParameters, ...
     dataMixed.p0SearchRangeSamplesVector, mixedSignal, timeVec, dataMixed.ivsMaskCells, ...
@@ -117,7 +118,7 @@ tic
     speechEnhancement(targetSignal, AlgorithmParameters, AlgorithmStates);
 toc
 enhancedSignalTarget = enhancedSignalTarget./max(max(abs(enhancedSignalTarget)));
-%% Evaluation of target speech
+%% Evaluate target speech
 
 evalTarget = evaluateAlgorithm(dataTarget.p0DetectedIndexVectors, AlgorithmParameters, ...
     dataTarget.p0SearchRangeSamplesVector, targetSignal, timeVec, dataTarget.ivsMaskCells, ...
@@ -129,7 +130,7 @@ tic
     speechEnhancement(interfSignal, AlgorithmParameters, AlgorithmStates);
 toc
 enhancedSignalInterf = enhancedSignalInterf./max(max(abs(enhancedSignalInterf)));
-%% Evaluation of interferer speech
+%% Evaluate interferer speech
 
 evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, AlgorithmParameters, ...
     dataInterf.p0SearchRangeSamplesVector, interfSignal, timeVec, dataInterf.ivsMaskCells, ...
@@ -138,7 +139,7 @@ evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, AlgorithmParam
 
 %% Compare coherent periodic samples detected
 
-%
+
 noTSIM = numel(cat(1,dataMixed.targetSampleIndices.L{:},dataMixed.targetSampleIndices.R{:}));
 noTSIT = numel(cat(1,dataTarget.targetSampleIndices.L{:},dataTarget.targetSampleIndices.R{:}));
 noTSII = numel(cat(1,dataInterf.targetSampleIndices.L{:},dataInterf.targetSampleIndices.R{:}));
@@ -149,7 +150,7 @@ noISII = numel(cat(1,dataInterf.interfSampleIndices.L{:},dataInterf.interfSample
 
 
 
-%% Play signals
+%% Play mixed signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
 sound(mixedSignal, AlgorithmParameters.Gammatone.samplingRateHz);
@@ -158,7 +159,7 @@ box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
 waitfor(box2);
 sound(enhancedSignalMixed, AlgorithmParameters.Gammatone.samplingRateHz);
 
-%% Play signals target
+%% Play target signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
 sound(targetSignal, AlgorithmParameters.Gammatone.samplingRateHz);
@@ -167,7 +168,7 @@ box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
 waitfor(box2);
 sound(enhancedSignalTarget, AlgorithmParameters.Gammatone.samplingRateHz);
 
-%% Play signals interferer
+%% Play interferer signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
 sound(interfSignal, AlgorithmParameters.Gammatone.samplingRateHz);
@@ -175,6 +176,7 @@ box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
 sound(enhancedSignalInterf, AlgorithmParameters.Gammatone.samplingRateHz);
+
 %% Display and save data
 % audiowrite(['testInput','.wav'],mixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
 % audiowrite(['testJeffrey','.wav'],enhancedMixedSignal,AlgorithmParameters.Gammatone.samplingRateHz);
@@ -184,6 +186,9 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     AlgorithmParameters, p0SearchRangeSamplesVector, testSignal, timeVec, ...
     ivsMask, azimuthDegCells, targetSampleIndices, interfSampleIndices, fc)
 
+    nBands = AlgorithmParameters.Gammatone.nBands;
+
+    % p0 detection histogram
     [evaluation.GC,evaluation.GR] = groupcounts(cat(1,p0DetectedIndexVectors.L{:},...
         p0DetectedIndexVectors.R{:}));
     evaluation.GR = nonzeros(evaluation.GR);%+p0SearchRangeSamplesVector(1)-1;
@@ -199,14 +204,17 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     xlabel('Frequency (Hz)')
     ylabel('No. of occurences in subband samples')
 
+    % signal spectrogram
     meanTestSignal = (testSignal(:,1) + testSignal(:,2))./2;
     figure;
     spectrogram(meanTestSignal,hamming(1000),[],[],...
         AlgorithmParameters.Gammatone.samplingRateHz);xlim([0, 0.5]);
     title('signal spectrogram')
 
-    evaluation.azDeg = zeros(30,length(ivsMask{1}));
-    for iBand = 1:30
+    % read position and chosen p0 and azimuth for all detected target and
+    %  interferer samples
+    evaluation.azDeg = zeros(nBands,length(ivsMask{1}));
+    for iBand = 1:nBands
         if AlgorithmParameters.coherenceMask
             evaluation.azDeg(iBand,ivsMask{iBand}) = azimuthDegCells{iBand};
         else
@@ -218,21 +226,31 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
             ivsMask{iBand} & p0DetectedIndexVectors.R{iBand};
     end
     
+    % plot azimuth estimation histogram
     figure;
     histogram(nonzeros(evaluation.azDeg(abs(evaluation.azDeg)<90)))
     title('DOA estimation histogram')
     xlabel('azimuth (Degrees)')
     ylabel('No. of occurences in subband samples')
     
-    evaluation.periodicityRatio = (numel(nonzeros(cat(1,p0DetectedIndexVectors.L{:},p0DetectedIndexVectors.R{:})))/30)/numel(testSignal);
-    evaluation.doaRatio = (numel(nonzeros(evaluation.azDeg))/30)/length(testSignal);
+    % proportion of detected periodic samples and samples that passed the
+    % coherence mask in azimuth estimation to the toal number of signal
+    % samples
+    evaluation.periodicityRatio = (numel(nonzeros(cat(1, ...
+        p0DetectedIndexVectors.L{:}, p0DetectedIndexVectors.R{:})))) / ...
+        (nBands*numel(testSignal));
+    evaluation.doaRatio = (numel(nonzeros(evaluation.azDeg))) / ...
+        (nBands*length(testSignal));
         
+    % map detected sample indices to p0 values
     for iBand = 1:30
         evaluation.targetp0DetectedIndexVectors.L{iBand} = p0DetectedIndexVectors.L{iBand}(targetSampleIndices.L{iBand});
         evaluation.interfp0DetectedIndexVectors.L{iBand} = p0DetectedIndexVectors.L{iBand}(interfSampleIndices.L{iBand});
         evaluation.targetp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(targetSampleIndices.R{iBand});
         evaluation.interfp0DetectedIndexVectors.R{iBand} = p0DetectedIndexVectors.R{iBand}(interfSampleIndices.R{iBand});
     end
+
+    % plot position and p0 of detected target and interferer samples
     for iBand = [5]%[3,4,5,10,14,20,25,30]
         figure;
 

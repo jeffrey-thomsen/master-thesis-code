@@ -1,6 +1,32 @@
-function [subbandSignal, targetSampleIndices, interfererSampleIndices] = harmonicEnhancement(snrDesired,...
-  ivsMask, p0DetectedIndexVectors, azimuthDegCells, subbandSignal,...
-  sigmaDesired, deltaDesired, iBand, AlgorithmParameters)
+% Apply harmonic enhancement or cancellation to detected periodic subband
+% samples
+%
+% Input:
+% subbandSignal - array of subband signal samples
+% iBand - index of subband to be processed
+% ivsMask - cells containing logical arrays indicating the indices of the
+% DOA estimates within each subband signal
+% p0DetectedIndexVectors - cells containing information about position of 
+% periodic samples within each subband signal and their respective detected
+% period
+% azimuthDegCells -  cells containing DOA estimate values for each subband
+% snrDesired, sigmaDesired, deltaDesired - cells containing SNR, Sigma and
+% Delta and SNR values of detected periodic subband samples
+% AlgorithmParameters - struct containing parametric information for the
+% simulation
+%
+% Output:
+% subbandSignal - array of processed subband signal samples
+% targetSampleIndices - vector containing indices of the subband samples
+% that were identified as target speech and processed with harmonic
+% enhancement
+% interfererSampleIndices - vector containing indices of the subband 
+% samples that were identified as interferer speech and processed with
+% harmonic enhancement
+function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
+  harmonicEnhancement(subbandSignal, iBand, ivsMask, ...
+  p0DetectedIndexVectors, azimuthDegCells, snrDesired, sigmaDesired, ...
+  deltaDesired, AlgorithmParameters)
 
     %% remove all samples (respective azimuth estimates) for which no 
     %% periodicity was detected

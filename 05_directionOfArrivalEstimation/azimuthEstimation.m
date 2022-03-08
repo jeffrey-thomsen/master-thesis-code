@@ -1,11 +1,27 @@
-function azimuthDegCells = azimuthEstimation(ipdRad, itdSec, ...
-  ivsMask, AlgorithmParameters)
+% estimate the incidence angle of signal samples using an IPD- or 
+% ITD-to-azimuth mapping function. Apply an IVS coherence mask to the
+% azimuth estimates, passing only those whose interaural transfer function
+% is sufficiently coherent.
+%
+% Input:
+% ipdRadCells - cells containing IPD values of subband signals of all bands
+% itdSecCells - cells containing ITD values of subband signals of all bands
+% ivsMaskCells - cells containing logical arrays for each subband,
+% determining which azimuth values to pass on for DOA estimation
+% AlgorithmParameters - struct containing parametric information for the
+% simulation, including the mapping polynomial coefficient lookup table
+%
+% Output:
+% azimuthDegCells - cells for each subband containing the azimuth estimates
+% in degrees that passed the IVS mask
+function azimuthDegCells = azimuthEstimation(ipdRadCells, itdSecCells, ...
+  ivsMaskCells, AlgorithmParameters)
 
     switch AlgorithmParameters.lookuptableType
         case 'itd'
-            mappingData = itdSec;
+            mappingData = itdSecCells;
         case 'ipd'
-            mappingData = ipdRad;
+            mappingData = ipdRadCells;
     end
     
     if AlgorithmParameters.coherenceMask && AlgorithmParameters.azimuthPooling
@@ -18,14 +34,13 @@ function azimuthDegCells = azimuthEstimation(ipdRad, itdSec, ...
     for iBand = 1:nBands
 
         % evaluate IPD/ITD-to-azimuth mapping polynomial
-
         azimuthDeg = interauralToAzimuthMapping(mappingData{iBand}, ...
             AlgorithmParameters.lookuptable{iBand});
 
         if AlgorithmParameters.coherenceMask
             % apply binary IVS filter mask - remove all azimuth estimates for 
             % which coherence criteria were not met
-            azimuthDeg = azimuthDeg(ivsMask{iBand});
+            azimuthDeg = azimuthDeg(ivsMaskCells{iBand});
         elseif AlgorithmParameters.azimuthPooling
             if iBand>14
                 azimuthDeg = median(cat(2,azimuthDegCells{1:14}),2);
