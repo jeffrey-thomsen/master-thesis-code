@@ -12,10 +12,14 @@ classdef TestAlgorithm < matlab.unittest.TestCase
 
     methods (Test)
         function testCancellation(testCase, ChenP0Detection, ...
-                coherenceMask, azimuthPooling, snrCondition, ...
-                DOAProcessing, Cancellation, Enhancement)
+          coherenceMask, azimuthPooling, snrCondition, ...
+          DOAProcessing, Cancellation, Enhancement)
+        % test if the speech enhancement algorithm will run with all
+        % combinations of processing parameters
+
             % Setup
             AlgorithmParameters = AlgorithmParametersConstructor();
+
             AlgorithmParameters.ChenP0Detection = ChenP0Detection;
             AlgorithmParameters.coherenceMask   = coherenceMask;
             AlgorithmParameters.azimuthPooling  = azimuthPooling;
@@ -23,6 +27,7 @@ classdef TestAlgorithm < matlab.unittest.TestCase
             AlgorithmParameters.DOAProcessing   = DOAProcessing;
             AlgorithmParameters.Cancellation    = Cancellation;
             AlgorithmParameters.Enhancement     = Enhancement;
+
             lookuptable = load('2022-03-07_itd_lookuptable_annotated.mat');
             lookuptable = lookuptable.lookuptable.lookuptable;
             AlgorithmParameters.lookuptable = lookuptable;

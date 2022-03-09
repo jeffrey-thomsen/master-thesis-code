@@ -3,9 +3,9 @@
 % author: Mathias Dietz, adapted by Jeffrey Thomsen
 %
 % Input:
-% itf - complex-valued interaural transfer function
+% itf - Nx1 complex-valued interaural transfer function vector
 % tauS - time constant for filtering
-% samplingRateHz - sampling rate of the signal in HZ
+% samplingRateHz - sampling rate of the signal in Hz
 % ivsThreshold - threshold value for binary IVS mask
 % States - filter states to be handed to the next signal block processed
 %

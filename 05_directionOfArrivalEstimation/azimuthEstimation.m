@@ -1,4 +1,4 @@
-% estimate the incidence angle of signal samples using an IPD- or 
+% Estimate the incidence angle of signal samples using an IPD- or 
 % ITD-to-azimuth mapping function. Apply an IVS coherence mask to the
 % azimuth estimates, passing only those whose interaural transfer function
 % is sufficiently coherent.
@@ -43,7 +43,7 @@ function azimuthDegCells = azimuthEstimation(ipdRadCells, itdSecCells, ...
             azimuthDeg = azimuthDeg(ivsMaskCells{iBand});
         elseif AlgorithmParameters.azimuthPooling
             if iBand>14
-                azimuthDeg = median(cat(2,azimuthDegCells{1:14}),2);
+                azimuthDeg = median(cat(2, azimuthDegCells{1:14}), 2);
             end
         end
 

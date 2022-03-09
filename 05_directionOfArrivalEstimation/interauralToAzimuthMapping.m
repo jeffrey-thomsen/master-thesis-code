@@ -4,7 +4,9 @@
 % Input:
 % interauralParameter - vector of numeric values (IPD in radians or ITD in
 % seconds)
-% lookuptable - struct containing the mapping polynomial coefficients
+% lookuptable - struct containing the mapping polynomial coefficients p, S
+% and MU, generated with the polyfit function in
+% interauralToAzimuthLookuptable.m
 %
 % Output:
 % azimuthDeg - vector of azimuth values in degrees
