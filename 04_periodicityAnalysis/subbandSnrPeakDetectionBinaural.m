@@ -9,12 +9,12 @@
 % p0CandidateVector - struct containing the indices of the maximal SNR
 % value for each subband signal sample, or 0 if no maximum is found for a
 % sample, of the left and right channel
-function p0CandidateIndexVector = subbandSnrPeakDetectionBinaural(snr)
-    p0CandidateIndexVector.L = subbandSnrPeakDetection(snr.L);
-    p0CandidateIndexVector.R = subbandSnrPeakDetection(snr.R);
+function p0CandidateIndexVector = subbandSnrPeakDetectionBinaural(snr, snrThreshold)
+    p0CandidateIndexVector.L = subbandSnrPeakDetection(snr.L, snrThreshold);
+    p0CandidateIndexVector.R = subbandSnrPeakDetection(snr.R, snrThreshold);
 end
 
-function p0CandidateGlobalMaxIndexVector = subbandSnrPeakDetection(snr)
+function p0CandidateGlobalMaxIndexVector = subbandSnrPeakDetection(snr, snrThreshold)
     % within snr matrix, find global maxima along p0 search range for each 
     % signal sample, excluding edge maxima
     % snr - NxM real-valued matrix - N: length of subband signal, M: number
@@ -47,6 +47,10 @@ function p0CandidateGlobalMaxIndexVector = subbandSnrPeakDetection(snr)
     snrP0CandidateLocalMaxValues = zeros(size(snr));
     snrP0CandidateLocalMaxValues(p0CandidateLocalMaxLogicalMatrixIndices) = ...
         snr(p0CandidateLocalMaxLogicalMatrixIndices);
+    
+    % Apply SNR filter mask
+    snrP0CandidateLocalMaxValues(...
+        snrP0CandidateLocalMaxValues < snrThreshold) = 0;
 
     % find maximum of SNR non-edge stationary points along FIFO arrays
     [~,p0CandidateGlobalMaxIndexVector] = ...

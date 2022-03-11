@@ -90,8 +90,9 @@ function [sigmaCells, deltaCells, snrCells, ...
         
         % intra-subband SNR peak detection: find p0 candidate for each
         % signal sample
+        snrThreshold = 10^(0.1*AlgorithmParameters.snrThresholdInDb);
         p0CandidateSampleIndexVector = ...
-            subbandSnrPeakDetectionBinaural(normalizedSnr);
+            subbandSnrPeakDetectionBinaural(normalizedSnr, snrThreshold);
 
         % calculate Sigmas, Deltas and SNR for p0 candidates from subband
         % signal
