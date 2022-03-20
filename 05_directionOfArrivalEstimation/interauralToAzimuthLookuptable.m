@@ -122,34 +122,69 @@ function lookuptable = ...
         
   
     %% for evaluation purposes
-
-%     for i=[1,5,10,15,20]
-%         figure(15); plot(azimuthAngleDeg,ipdRadMedianArray{i}); hold on;
-% %         figure; plot(azimuthAngleDeg,ipdRadDisMedianArray{i})
-% %         hold on; plot(azimuthAngleDeg,unwrap(ipdRadMedianArray{i}));
-% %         plot(azimuthAngleDeg,(ipdRadMedianArray{i}));
-% %         plot(azimuthAngleDeg,unwrap(ipdRadMedianArray{i})-2*pi);
+%     centerFreqsHz = FilterStates.L.GammatoneStates.analyzer.center_frequencies_hz;
+% 
+%     switch AlgorithmParameters.lookuptableType
+%         case 'itd'
+%             mappingSpace = linspace(-1e-3, 1e-3, 1000);
+%         case 'ipd'
+%             mappingSpace = linspace(-pi, pi, 1000);
 %     end
 % 
-%     for iBand=1:30
-%         figure(16); 
-%         plot(ipdRadMedianArray{iBand},azimuthAngleDeg); 
-%         hold on; 
-%         ylim([-100, 100]);
-%         xlim([-pi, pi]);
-%         figure(17); 
-%         plot(linspace(-pi, pi), polyval(lookuptable{iBand}.p,...
-%             linspace(-pi, pi), lookuptable{iBand}.S, lookuptable{iBand}.MU)); 
-%         hold on; 
-%         ylim([-100, 100]);
-%         xlim([-pi, pi]);
+%     i = 1;
+%     for iBand=1:4:17
+%         figure(1);
+% %         set(gca,'FontSize',18);
+%         plot(mappingData{iBand}, azimuthAngleDeg); 
+%         hold on;
+%         ylim([-90, 90]);
+%         title('Data for fitting ITD-to-azimuth polynomial')
+%         xlabel('ITD (s)')
+%         ylabel('azimuth (degrees)')
+% 
+%         figure(2);
+% %         set(gca,'FontSize',18);
+%         plot(mappingSpace, polyval(lookuptable{iBand}.p, mappingSpace, ...
+%             lookuptable{iBand}.S, lookuptable{iBand}.MU)); 
+%         hold on;
+%         ylim([-90, 90]);
+%         title('Fitted ITD-to-azimuth polynomial')
+%         xlabel('ITD (s)')
+%         ylabel('azimuth (degrees)')
+% 
+%         legendString{i}=['fc=',num2str(centerFreqsHz(iBand),'%.0f'),'Hz'];
+%         i = i+1;
 %     end
-% % 
-% %     for iBand=[1,5,10,15,20]
-% %         figure(18); plot(ildMedianArray{iBand},azimuthAngleDeg); hold on; ylim([-100, 100]); xlim([-10, 10]);
-% %         figure(19); plot(linspace(-10,10),polyval(pILD{iBand}, linspace(-pi,pi), SILD{iBand}, ...
-% %             MUILD{iBand})); hold on; ylim([-100, 100]); xlim([-10, 10]);
-% %     end
+%     figure(1); legend(legendString,'Location','southeast')
+%     figure(2); legend(legendString,'Location','southeast')
+% 
+%         i = 1;
+%     for iBand=18:4:30
+%         figure(3);
+% %         set(gca,'FontSize',18);
+%         plot(mappingData{iBand}, azimuthAngleDeg); 
+%         hold on;
+%         ylim([-90, 90]);
+%         title('Data for fitting ITD-to-azimuth polynomial')
+%         xlabel('ITD (s)')
+%         ylabel('azimuth (degrees)')
+% 
+%         figure(4); 
+% %         set(gca,'FontSize',18);
+%         plot(mappingSpace, polyval(lookuptable{iBand}.p, mappingSpace, ...
+%             lookuptable{iBand}.S, lookuptable{iBand}.MU)); 
+%         hold on;
+%         ylim([-90, 90]);
+%         title('Fitted ITD-to-azimuth polynomial')
+%         xlabel('ITD (s)')
+%         ylabel('azimuth (degrees)')
+% 
+%         legendString{i}=['fc=',num2str(centerFreqsHz(iBand),'%.0f'),'Hz'];
+%         i = i+1;
+%     end
+%     figure(3); legend(legendString,'Location','southeast')
+%     figure(4); legend(legendString,'Location','southeast')
+
 
     %% for testing the IVS
 %     ivsArray = zeros(iAzimuth, iBand);

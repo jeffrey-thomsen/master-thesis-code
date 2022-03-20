@@ -32,7 +32,7 @@ for jAngle = 1:87
         % median value
         for iMeasurement = 1:5
             medianCounts(iMeasurement) = medianCounts(iMeasurement) + ...
-                numel(nonzeros(tempHRIR(:,iMeasurement)==tempMedian));
+                nnz(tempHRIR(:,iMeasurement)==tempMedian);
         end
 
     end

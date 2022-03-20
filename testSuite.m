@@ -940,7 +940,7 @@ function testCalcIvs(testCase)
 %     ivs = calcIvs(itf, 0.04, 44100, 0.98, States);
 % 
 %     % Verify
-%     ratio(i) = numel(nonzeros(ivs))/numel(ivs);
+%     ratio(i) = nnz(ivs)/numel(ivs);
 %     end
 %     verifyGreaterThan(testCase, ratio, 0.6)
 end
