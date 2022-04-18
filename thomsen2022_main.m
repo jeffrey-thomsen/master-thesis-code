@@ -35,8 +35,8 @@ AlgorithmParameters.nCyclesTau = 5; % Dietz2011
 AlgorithmParameters.snrThresholdInDb = 10;
 
 % load HRTF
-hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
+% hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
+% AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
 
 % generate/load IPD-to-azimuth mapping function
 tic
@@ -63,54 +63,55 @@ centerFreqsHz = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz
 
 %% Generate test signal
 
-% load clean speech signals
-[targetSignal, fsTarget] = audioread('pathological_16.wav');%p298_097.wav');%'intelligence_16.wav');%%'sp01.wav');
-[interfSignal, fsInterf] = audioread('peaches_16.wav');%p313_256.wav');%'storylines_16.wav');%%'sp30.wav');
-
-% adjust sampling rate to HRTF
-targetSignal = resample(targetSignal, hrtf.Data.SamplingRate, fsTarget);
-interfSignal = resample(interfSignal, hrtf.Data.SamplingRate, fsInterf);
-
-% equalize lengths
-if length(targetSignal) > length(interfSignal)
-    targetSignal = targetSignal(1:length(interfSignal));
-elseif length(targetSignal) < length(interfSignal)
-    interfSignal = interfSignal(1:length(targetSignal));
-end
-
-% equalize levels - SNR 0dB
-% interfSignal = interfSignal*(sum(abs(targetSignal).^2)./sum(abs(interfSignal).^2));
-
-% convolve with HRTF at different incidence angles
-targetSignal = SOFAspat(targetSignal, hrtf, 0, 0);
-interfSignal = SOFAspat(interfSignal, hrtf, 60, 0);
+% DAGA target 0 degrees, interferer 60 degrees
+TestSignalParameters.testSignalType = 'DAGA';
+[testSignal, fsHrtf] = testSignalGenerator(TestSignalParameters);
 
 % adjust sampling rate to gammatone filterbank
-targetSignal = resample(targetSignal, ...
-    AlgorithmParameters.Gammatone.samplingRateHz, hrtf.Data.SamplingRate);
-interfSignal = resample(interfSignal, ...
-    AlgorithmParameters.Gammatone.samplingRateHz, hrtf.Data.SamplingRate);
-
-% equalize levels - Target-to-interferer energy ratio 0dB
-targetSignal = targetSignal / std(targetSignal(:));
-interfSignal = interfSignal / std(interfSignal(:));
-
-% add and normalize test signal
-mixedSignal = targetSignal + interfSignal;
-
-scalingFactor = max(max(mixedSignal));
-
-mixedSignal = mixedSignal./scalingFactor;
-targetSignal = targetSignal./scalingFactor;
-interfSignal = interfSignal./scalingFactor;
-
-% testSignal = testSignalGenerator;
-mixedSignal = testInputSignal(mixedSignal);
+mixedSignal = resample(testSignal{1}, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+targetSignal = resample(testSignal{2}, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+interfSignal = resample(testSignal{3}, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
 
 % time vector for plotting
 dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
 timeVec = dt:dt:dt*length(mixedSignal);
 
+%% Generate test signal battery
+
+TestSignalParameters.testSignalType = 'Battery';
+TestSignalParameters.speakerIds = [475, 644, 756, 844, 943, 1400, 1566, 1587, 2222];
+TestSignalParameters.targetAngles = [-90, -60, -30, 0, 30, 60, 90];
+TestSignalParameters.nSpeakers = 3;
+[testSignal, fsHrtf, anglePermutations, speakerCombinations] = ...
+  testSignalGenerator(TestSignalParameters);
+
+for iSignal = 1:numel(testSignal)
+    testSignal{iSignal} = resample(testSignal{iSignal}, ...
+        AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+end
+
+% time vector for plotting
+dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
+timeVec = dt:dt:dt*length(testSignal{1,1});
+
+BlockFeedingParameters.blockLength = 500;
+for iSignal = 1:numel(testSignal)
+    tic
+    [enhancedSignal{iSignal}, ~, SimulationData{iSignal}] = ...
+        blockFeedingRoutine(testSignal{iSignal}, BlockFeedingParameters, ...
+        AlgorithmParameters, AlgorithmStates);
+    toc
+    
+    enhancedSignal{iSignal} = enhancedSignal{iSignal} ./ ...
+        max(max(abs(enhancedSignal{iSignal})));
+
+%     Evaluation{iSignal} = evaluateAlgorithm(SimulationData.p0DetectedIndexVectors, AlgorithmParameters, ...
+%     SimulationData.p0SearchRangeSamplesVector, mixedSignal, timeVec, SimulationData.ivsMaskCells, ...
+%     SimulationData.azimuthDegCells, SimulationData.targetSampleIndices, SimulationData.interfSampleIndices, centerFreqsHz, false);
+end
 %% Enhance mixed speech
 % tic
 % processedSignal = blockFeedingRoutine(testSignal,BlockFeedingParameters,...

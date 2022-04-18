@@ -8,8 +8,10 @@
 % simulation
 % AlgorithmStates - struct containing e.g. filter states that are updated
 % every sample and need to be updated for each processed block
-function [processedSignal, AlgorithmStates] = blockFeedingRoutine(testSignal, ...
+function [processedSignal, AlgorithmStates, SimulationData] = blockFeedingRoutine(testSignal, ...
   BlockFeedingParameters, AlgorithmParameters, AlgorithmStates)
+
+    warning('Do not have propoer simulation data gathering in block feeding routing yet!')
 
     if nargin > 1 && isfield(BlockFeedingParameters,'blockLength')
         blockLength = BlockFeedingParameters.blockLength;
@@ -25,7 +27,7 @@ function [processedSignal, AlgorithmStates] = blockFeedingRoutine(testSignal, ..
     processedSignal = zeros(size(testSignal));
     for iBlock=1:nBlocks
         signalIndices = round((1:blockLength)+(iBlock-1)*blockLength);
-        [processedSignal(signalIndices,:), AlgorithmStates] = ...
+        [processedSignal(signalIndices,:), AlgorithmStates, SimulationData] = ...
             speechEnhancement(testSignal(signalIndices,:), ...
                 AlgorithmParameters, AlgorithmStates);
     end
