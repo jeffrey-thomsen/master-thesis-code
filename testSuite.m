@@ -1043,6 +1043,50 @@ function testSpeechEnhancementInBlockFeederCompare(testCase)
     
 end
 
+function testSpeechEnhancementCompareScaledSignals(testCase)
+% test if a linearly scaled version of the input signal yields the same
+% simulation data in terms of detected periodicity and DOA, and if the
+% enhanced signal
+
+    % Setup
+    AlgorithmParameters = AlgorithmParametersConstructor();
+    
+    %     AlgorithmParameters.lookuptableType = 'ipd';
+    
+    hrtf = SOFAload('HRIR_KEMAR_DV0001_3.sofa',[5 2],'R');
+    AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
+    load('2022-03-04_itd_lookuptable_annotated.mat');
+    lookuptable = lookuptable.lookuptable;
+    AlgorithmParameters.lookuptable = lookuptable;
+
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+     % create test signal
+    input = rand(500,2)-0.5;
+    inputSignal = testInputSignal(input);
+
+    % Exercise
+
+    [enhancedSignal, ~, simulationData] = ...
+        speechEnhancement(inputSignal, AlgorithmParameters, AlgorithmStates);
+    scalingFactor = 10;
+    [enhancedScaledSignal, ~, simulationScaledData] = ...
+        speechEnhancement(inputSignal.*scalingFactor, AlgorithmParameters, AlgorithmStates);
+
+     % Verify
+    verifyEqual(testCase, enhancedSignal, enhancedScaledSignal./scalingFactor, "AbsTol", 1e-12)
+    verifyEqual(testCase, simulationData, simulationScaledData, "RelTol", 1e-11)
+%     simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
+%     simulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
+%     simulationData.ipdRadCells = ipdRadCells;
+%     simulationData.ivsMaskCells = ivsMaskCells;
+%     simulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
+%     simulationData.azimuthDegCells = azimuthDegCells;
+%     simulationData.targetSampleIndices = targetSampleIndices;
+%     simulationData.interfSampleIndices = interfSampleIndices;
+%     simulationData.itdSecCells = itdSecCells;
+%     simulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
+end
 %% LP filter testing
 function testFirstOrderLPFilterAgainstFilter(testCase)
 % verify that the firstOrderLPFilter.m function functions equally to the
