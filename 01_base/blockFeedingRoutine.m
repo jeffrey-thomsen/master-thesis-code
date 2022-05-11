@@ -8,10 +8,11 @@
 % simulation
 % AlgorithmStates - struct containing e.g. filter states that are updated
 % every sample and need to be updated for each processed block
-function [processedSignal, AlgorithmStates, SimulationData] = blockFeedingRoutine(testSignal, ...
-  BlockFeedingParameters, AlgorithmParameters, AlgorithmStates)
+function [processedSignal, AlgorithmStates, SimulationData] = ...
+  blockFeedingRoutine(testSignal, BlockFeedingParameters, ...
+  AlgorithmParameters, AlgorithmStates)
 
-    warning('Do not have propoer simulation data gathering in block feeding routing yet!')
+    warning('Blockwise storing of simulation data not compatible.')
 
     if nargin > 1 && isfield(BlockFeedingParameters,'blockLength')
         blockLength = BlockFeedingParameters.blockLength;
@@ -24,11 +25,16 @@ function [processedSignal, AlgorithmStates, SimulationData] = blockFeedingRoutin
 
     % Cut signal into specified block sizes and run speech enhancement
     % algorithm block-by-block
-    processedSignal = zeros(size(testSignal));
+    processedSignal = zeros(nBlocks*blockLength, size(testSignal,2));
+    signalIndices = zeros(nBlocks,blockLength);
     for iBlock=1:nBlocks
-        signalIndices = round((1:blockLength)+(iBlock-1)*blockLength);
-        [processedSignal(signalIndices,:), AlgorithmStates, SimulationData] = ...
-            speechEnhancement(testSignal(signalIndices,:), ...
+        signalIndices(iBlock,:) = round((1:blockLength)+(iBlock-1)*blockLength);
+        [processedSignal(signalIndices(iBlock,:),:), AlgorithmStates, ...
+            SimulationData.Data(iBlock)] = ...
+            speechEnhancement(testSignal(signalIndices(iBlock,:),:), ...
                 AlgorithmParameters, AlgorithmStates);
     end
+    SimulationData.blockLength = blockLength;
+    SimulationData.nBlocks = nBlocks;
+    SimulationData.signalIndices = signalIndices;
 end

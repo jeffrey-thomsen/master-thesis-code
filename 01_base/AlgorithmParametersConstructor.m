@@ -20,6 +20,8 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
     AlgorithmParameters.nCyclesTau = 5; % Dietz2011
     AlgorithmParameters.snrThresholdInDb = 0; % Bruemann2018
+    
+    AlgorithmParameters.targetRangeDeg = [-5 5];
 
     AlgorithmParameters.ChenP0Detection = false;
     AlgorithmParameters.coherenceMask = true;

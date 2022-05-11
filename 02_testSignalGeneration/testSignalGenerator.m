@@ -1,16 +1,27 @@
-function [testSignal, fsHrtf, anglePermutations, speakerCombinations] = ...
+function [testSignal, targetSignal, interfSignal, fsHrtf, ...
+  anglePermutations, speakerCombinations] = ...
   testSignalGenerator(TestSignalParameters, hrtf)
 
-% load HRTF
-if nargin < 2
-    hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');  
+% check desired test signal type (keep compatible with old unit tests)
+if nargin == 0
+    TestSignalParameters.testSignalType = 'WhiteNoise';
+elseif nargin == 1
+   if ~isfield(TestSignalParameters, 'testSignalType')
+       TestSignalParameters.testSignalType = 'WhiteNoise';
+   end
+   if ~(strcmp(TestSignalParameters.testSignalType, 'WhiteNoise'))
+       hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
+   end
 end
-fsHrtf = hrtf.Data.SamplingRate;
+
+if ~(strcmp(TestSignalParameters.testSignalType, 'WhiteNoise'))
+    fsHrtf = hrtf.Data.SamplingRate;
+end
 
 switch TestSignalParameters.testSignalType
     case 'WhiteNoise'
 
-        if nargin>0
+        if isfield(TestSignalParameters, 'nSamples')
             nSamples = TestSignalParameters.nSamples;
         else
             nSamples = 32000;
@@ -48,22 +59,18 @@ switch TestSignalParameters.testSignalType
         
         scalingFactor = max(max(mixedSignal));
         
-        mixedSignal  = mixedSignal ./scalingFactor;
+        testSignal  = mixedSignal ./scalingFactor;
         targetSignal = targetSignal./scalingFactor;
         interfSignal = interfSignal./scalingFactor;
-        
-        % testSignal = testSignalGenerator;
-        testSignal{1} = testInputSignal(mixedSignal);
-        testSignal{2} = testInputSignal(targetSignal);
-        testSignal{3} = testInputSignal(interfSignal);
 
     case 'Battery'
 
-        % parameters
+        % read parameters
         targetAngles = TestSignalParameters.targetAngles;
         nAngles = numel(targetAngles);
         speakerIdVector = TestSignalParameters.speakerIds;
         nSpeakers = TestSignalParameters.nSpeakers;
+        assert(nAngles>=nSpeakers, 'Number of angles must be at least the number of speakers');
 %         snr = TestSignalParameters.snr;
     
         % generate battery of possible voice combinations
@@ -73,7 +80,7 @@ switch TestSignalParameters.testSignalType
         for speakerId = speakerIdVector
             iSource = iSource+1;
             [speech.sig, speech.fs] = ...
-                audioread(['si', num2str(speakerId), '.wav']);
+                audioread(strcat(speakerId, '.flac'));
             speechCell{iSource} = speech;
             speechLength(iSource) = length(speech.sig);
         end
@@ -87,6 +94,7 @@ switch TestSignalParameters.testSignalType
         end
         
         % resample signals to HRTF sampling rate
+        speechCellResampled = cell([nSources, 1]);
         for iSource = 1:nSources
             speechCellResampled{iSource} = ...
                 resample(speechCell{iSource}.sig, fsHrtf, ...
@@ -94,6 +102,7 @@ switch TestSignalParameters.testSignalType
         end
         
         % spatialize each speech signal with every desired DOA
+        speechCellSpatialized = cell([nSources, nAngles]);
         for iSource = 1:nSources
             for jAngle = 1:nAngles
                 speechCellSpatialized{iSource, jAngle} = ...
@@ -108,46 +117,63 @@ switch TestSignalParameters.testSignalType
         
         % MISSING: VARIABLE SNR
 
-        % add up and normalize test signal
+        % compute all possible combinations of speakers and angles
         nk = nchoosek(1:nAngles, nSpeakers);
         p = zeros(0, nSpeakers);
         for i = 1:size(nk, 1)
             pi = perms(nk(i, :));
             p = unique([p; pi], 'rows');
         end
-
         anglePermutations = p;%perms(1:nAngles);
         nAnglePerms = size(anglePermutations, 1);
         speakerCombinations = nchoosek(1:nSources, nSpeakers);
         nSpeakerCombos = size(speakerCombinations, 1);
-
-        signalCell = cell([nSpeakerCombos, nAnglePerms]);
+        
+        % add up and normalize test signal
+        mixedSignalCell  = cell([nSpeakerCombos, nAnglePerms]);
+        targetSignalCell = cell([nSpeakerCombos, nAnglePerms]);
+        interfSignalCell = cell([nSpeakerCombos, nAnglePerms]);
         for iSpeakerCombo = 1:nSpeakerCombos
             for jAnglePerm = 1:nAnglePerms
-                signalCell{iSpeakerCombo, jAnglePerm} = ...
+                targetSignalCell{iSpeakerCombo, jAnglePerm} = ...
                         speechCellSpatialized{...
                         speakerCombinations(iSpeakerCombo, 1), ...
                         anglePermutations(jAnglePerm, 1)...
                         };
-                for kSpeaker = 2:nSpeakers
-                    signalCell{iSpeakerCombo, jAnglePerm} = ...
-                        signalCell{iSpeakerCombo, jAnglePerm} + ...
+                interfSignalCell{iSpeakerCombo, jAnglePerm} = ...
+                        speechCellSpatialized{...
+                        speakerCombinations(iSpeakerCombo, 2), ...
+                        anglePermutations(jAnglePerm, 2)...
+                        };
+                for kSpeaker = 3:nSpeakers % if >2 speakers present
+                    interfSignalCell{iSpeakerCombo, jAnglePerm} = ...
+                        interfSignalCell{iSpeakerCombo, jAnglePerm} + ...
                         speechCellSpatialized{...
                         speakerCombinations(iSpeakerCombo, kSpeaker), ...
                         anglePermutations(jAnglePerm, kSpeaker)...
                         };
                 end
-                scalingFactor = max(max(signalCell{iSpeakerCombo, jAnglePerm}));
-                signalCell{iSpeakerCombo, jAnglePerm} = ...
-                    signalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
+
+                mixedSignalCell{iSpeakerCombo, jAnglePerm} = ...
+                    targetSignalCell{iSpeakerCombo, jAnglePerm} + ...
+                    interfSignalCell{iSpeakerCombo, jAnglePerm};
+
+                scalingFactor = max(max(mixedSignalCell{iSpeakerCombo, jAnglePerm}));
+                mixedSignalCell{iSpeakerCombo, jAnglePerm} = ...
+                    mixedSignalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
+                targetSignalCell{iSpeakerCombo, jAnglePerm} = ...
+                    targetSignalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
+                interfSignalCell{iSpeakerCombo, jAnglePerm} = ...
+                    interfSignalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
             end
         end
 
-        testSignal = signalCell;
+        testSignal = mixedSignalCell;
+        targetSignal = targetSignalCell;
+        interfSignal = interfSignalCell;
         anglePermutations = targetAngles(anglePermutations);
         speakerCombinations = speakerIdVector(speakerCombinations);%nchoosek(speakerIdVector, nAngles);
 
-        % MISSING: clean binaural signals as reference
         % MIGHT WANT: global scaling factor for all test signals
 
 end

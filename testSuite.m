@@ -713,7 +713,7 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
         snr.R(:,iP0Value) = testSignal(:,2);
     end
     % Exercise
-    p0Candidates = subbandSnrPeakDetectionBinaural(snr);
+    p0Candidates = subbandSnrPeakDetectionBinaural(snr, 0);
 
     % Validate
     expectedSize = [size(snr.L,1), 1];
@@ -736,7 +736,7 @@ function testSubbandSnrPeakDetectionBinauralValues(testCase)
     end
 
     % Exercise
-    p0Candidates = subbandSnrPeakDetectionBinaural(snr);
+    p0Candidates = subbandSnrPeakDetectionBinaural(snr, 0);
 
     % Validate
 %     expectedP0Candidates.L = 50*ones(nSamples,1);
@@ -950,7 +950,7 @@ function testCalcIvsFilterStateRelay(testCase)
 % processing the entire signal, thus testing the function of
 % the filter states and previous value in the States struct
     % Setup
-    signal = audioread('p298_097.wav');
+    signal = audioread('peaches_16.wav');
     hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
     binauralSignal = SOFAspat(signal, hrtf, -60, 0);
     binauralSignal = binauralSignal(1:10000,:);
@@ -1075,17 +1075,17 @@ function testSpeechEnhancementCompareScaledSignals(testCase)
 
      % Verify
     verifyEqual(testCase, enhancedSignal, enhancedScaledSignal./scalingFactor, "AbsTol", 1e-12)
-    verifyEqual(testCase, simulationData, simulationScaledData, "RelTol", 1e-11)
-%     simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
-%     simulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
-%     simulationData.ipdRadCells = ipdRadCells;
-%     simulationData.ivsMaskCells = ivsMaskCells;
-%     simulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
-%     simulationData.azimuthDegCells = azimuthDegCells;
-%     simulationData.targetSampleIndices = targetSampleIndices;
-%     simulationData.interfSampleIndices = interfSampleIndices;
-%     simulationData.itdSecCells = itdSecCells;
-%     simulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
+%     verifyEqual(testCase, simulationData, simulationScaledData, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.p0DetectedIndexVectors, simulationScaledData.p0DetectedIndexVectors, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.p0SearchRangeSamplesVector, simulationScaledData.p0SearchRangeSamplesVector, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.ipdRadCells, simulationScaledData.ipdRadCells, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.ivsMaskCells, simulationScaledData.ivsMaskCells, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.ipdDisambiguatedLogicalCells, simulationScaledData.ipdDisambiguatedLogicalCells, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.azimuthDegCells, simulationScaledData.azimuthDegCells, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.targetSampleIndices, simulationScaledData.targetSampleIndices, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.interfSampleIndices, simulationScaledData.interfSampleIndices, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.itdSecCells, simulationScaledData.itdSecCells, "RelTol", 1e-11)
+    verifyEqual(testCase, simulationData.itdDisambiguatedLogicalCells, simulationScaledData.itdDisambiguatedLogicalCells, "RelTol", 1e-11)
 end
 %% LP filter testing
 function testFirstOrderLPFilterAgainstFilter(testCase)

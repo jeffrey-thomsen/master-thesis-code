@@ -34,20 +34,20 @@ AlgorithmParameters.nCyclesTau = 5; % Dietz2011
 
 AlgorithmParameters.snrThresholdInDb = 10;
 
-% load HRTF
-% hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-% AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
+BlockFeedingParameters.blockLength = 500; % seems to be the fastest
 
-% generate/load IPD-to-azimuth mapping function
+% load HRTF
+hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
+AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
+
+% generate/load ITD/IPD-to-azimuth mapping function
 tic
-load('2022-03-04_itd_lookuptable_annotated.mat');
+load('2022-05-11_itd_lookuptable_annotated.mat');
 lookuptable = lookuptable.lookuptable;
-AlgorithmParameters.lookuptable = lookuptable;
 % lookuptable = interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,...
-%     'intelligence_16.wav', 'storylines_16.wav', 'shellshock_16.wav', ...
-%     'peaches_16.wav', 'p360_253.wav', 'p313_256.wav', 'p298_097.wav', ...
-%     'p237_079.wav', 'p234_003.wav', '2078-142845-0002.flac');
-% interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,'intelligence_16.wav', 'storylines_16.wav', 'shellshock_16.wav', 'peaches_16.wav', 'housewives_16.wav', 'necessity_16.wav', 'prison_16.wav', 'butterscotch_16.wav', 'bigtips_16.wav', 'pathological_16.wav');
+%     "0251M.flac","0652M.flac","1462F.flac","2035F.flac","2277F.flac",...
+%     "3575F.flac","5694M.flac","7176M.flac","7729M.flac","7976F.flac");
+AlgorithmParameters.lookuptable = lookuptable;
 toc
 
 
@@ -61,57 +61,155 @@ AlgorithmParameters.Gammatone.samplingRateHz = ...
 
 centerFreqsHz = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
 
-%% Generate test signal
-
-% DAGA target 0 degrees, interferer 60 degrees
-TestSignalParameters.testSignalType = 'DAGA';
-[testSignal, fsHrtf] = testSignalGenerator(TestSignalParameters);
-
-% adjust sampling rate to gammatone filterbank
-mixedSignal = resample(testSignal{1}, ...
-    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
-targetSignal = resample(testSignal{2}, ...
-    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
-interfSignal = resample(testSignal{3}, ...
-    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
-
-% time vector for plotting
-dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
-timeVec = dt:dt:dt*length(mixedSignal);
-
 %% Generate test signal battery
-
+tic
+% define parameters
 TestSignalParameters.testSignalType = 'Battery';
-TestSignalParameters.speakerIds = [475, 644, 756, 844, 943, 1400, 1566, 1587, 2222];
-TestSignalParameters.targetAngles = [-90, -60, -30, 0, 30, 60, 90];
-TestSignalParameters.nSpeakers = 3;
-[testSignal, fsHrtf, anglePermutations, speakerCombinations] = ...
-  testSignalGenerator(TestSignalParameters);
+TestSignalParameters.speakerIds = ...
+    ["0251M", "0652M", "1462F", "2035F", "2277F", ...
+     "3575F", "5694M", "7176M", "7729M", "7976F"];
+TestSignalParameters.targetAngles = [-90, 0, 60];
+%[-90, -45, 0, 45, 90];
+%[-90, -60, -30, 0, 30, 60, 90];
+TestSignalParameters.nSpeakers = 2;
 
+[testSignal, targetSignal, interfSignal, fsHrtf, anglePermutations, ...
+    speakerCombinations] = testSignalGenerator(TestSignalParameters, hrtf);
+
+% resample signals to algorithm sampling rate
 for iSignal = 1:numel(testSignal)
     testSignal{iSignal} = resample(testSignal{iSignal}, ...
+        AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+    targetSignal{iSignal} = resample(targetSignal{iSignal}, ...
+        AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+    interfSignal{iSignal} = resample(interfSignal{iSignal}, ...
         AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
 end
 
 % time vector for plotting
 dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
 timeVec = dt:dt:dt*length(testSignal{1,1});
+toc
 
-BlockFeedingParameters.blockLength = 500;
-for iSignal = 1:numel(testSignal)
+%% Enhance speech
+
+for iSpeakerCombo = 1:2 %nSpeakerCombos
+    for jAnglePerm = 1:2 %nAnglePerms
+
     tic
-    [enhancedSignal{iSignal}, ~, SimulationData{iSignal}] = ...
-        blockFeedingRoutine(testSignal{iSignal}, BlockFeedingParameters, ...
-        AlgorithmParameters, AlgorithmStates);
-    toc
-    
-    enhancedSignal{iSignal} = enhancedSignal{iSignal} ./ ...
-        max(max(abs(enhancedSignal{iSignal})));
 
-%     Evaluation{iSignal} = evaluateAlgorithm(SimulationData.p0DetectedIndexVectors, AlgorithmParameters, ...
-%     SimulationData.p0SearchRangeSamplesVector, mixedSignal, timeVec, SimulationData.ivsMaskCells, ...
-%     SimulationData.azimuthDegCells, SimulationData.targetSampleIndices, SimulationData.interfSampleIndices, centerFreqsHz, false);
+    AlgorithmParameters.targetRangeDeg = ...
+        anglePermutations(jAnglePerm, 1) + [-5 5];
+    [enhancedSignal{iSpeakerCombo, jAnglePerm}, ~, ...
+        SimulationData{iSpeakerCombo, jAnglePerm}.Data] = ...
+        speechEnhancement(testSignal{iSpeakerCombo, jAnglePerm}, ...
+        AlgorithmParameters, AlgorithmStates);
+    SimulationData{iSpeakerCombo, jAnglePerm}.blockLength = ...
+        length(testSignal{iSpeakerCombo, jAnglePerm});
+    SimulationData{iSpeakerCombo, jAnglePerm}.nBlocks = 1;
+    SimulationData{iSpeakerCombo, jAnglePerm}.signalIndices = ...
+        1:length(testSignal{iSpeakerCombo, jAnglePerm});
+    toc
+
+    % Shadow method: enhance target and interferer signals separately with 
+    % the SimulationData from the mixed signal processing for assessing
+    % SNR improvement
+    tic
+    enhancedSignalTarget{iSpeakerCombo, jAnglePerm} = ...
+        enhanceComparisonSignal('target', ...
+        targetSignal{iSpeakerCombo, jAnglePerm}, ...
+        SimulationData{iSpeakerCombo, jAnglePerm}.Data, ...
+        AlgorithmStates, AlgorithmParameters);
+    enhancedSignalInterf{iSpeakerCombo, jAnglePerm} = ...
+        enhanceComparisonSignal('interf', ...
+        interfSignal{iSpeakerCombo, jAnglePerm}, ...
+        SimulationData{iSpeakerCombo, jAnglePerm}.Data, ...
+        AlgorithmStates, AlgorithmParameters);
+    toc
+
+%     enhancedSignal{iSignal} = enhancedSignal{iSignal} ./ ...
+%         max(max(abs(enhancedSignal{iSignal})));
+
+%     Evaluation{iSignal} = evaluateAlgorithm(...
+%         SimulationData.p0DetectedIndexVectors, AlgorithmParameters, ...
+%         SimulationData.p0SearchRangeSamplesVector, mixedSignal, timeVec, ...
+%         SimulationData.ivsMaskCells, SimulationData.azimuthDegCells, ...
+%         SimulationData.targetSampleIndices, ...
+%         SimulationData.interfSampleIndices, centerFreqsHz, false);
+    end
 end
+
+% Alternative evaluation of full signal at once
+% for iSignal = 1
+%     tic
+%     [enhancedSignal{iSignal}, ~, SimulationData{iSignal}.Data] = ...
+%         speechEnhancement(testSignal{iSignal}, AlgorithmParameters, ...
+%         AlgorithmStates);
+%     toc
+%     SimulationData{iSignal}.blockLength = length(testSignal{iSignal});
+%     SimulationData{iSignal}.nBlocks = 1;
+%     SimulationData{iSignal}.signalIndices = 1:length(testSignal{iSignal});
+% end
+%% Evaluate enhanced mixed speech
+
+% compare chosen bins to IBM
+[targetSubbandSignals, ~] = ...
+        subbandDecompositionBinaural(targetSignal{2}, AlgorithmStates);
+[interfSubbandSignals, ~] = ...
+        subbandDecompositionBinaural(interfSignal{2}, AlgorithmStates);
+
+[ibmTarget.L, ibmInterf.L] = ...
+    computeIbm(targetSubbandSignals.L, interfSubbandSignals.L, AlgorithmParameters);
+[ibmTarget.R, ibmInterf.R] = ...
+    computeIbm(targetSubbandSignals.R, interfSubbandSignals.R, AlgorithmParameters);
+
+[maskTarget, maskInterf] = extractAppliedMask(SimulationData, ...
+    AlgorithmParameters.Gammatone.nBands);
+
+nSamples = length(maskTarget{2}.L);
+ibmTarget.L = ibmTarget.L(1:nSamples,:);
+ibmTarget.R = ibmTarget.R(1:nSamples,:);
+ibmInterf.L = ibmInterf.L(1:nSamples,:);
+ibmInterf.R = ibmInterf.R(1:nSamples,:);
+
+[precision, recall] = ...
+    compareToIbm(maskTarget{2}, maskInterf{2}, ibmTarget, ibmInterf);
+
+% compute SNR improvement - assumption: target and interferer processing
+% can be superimposed, which should hold if the IBM precision is
+% satisfactory
+snrImprovement = computeSnrImprovement(targetSignal{2}, interfSignal{2}, ...
+    enhancedSignalTarget{2}, enhancedSignalInterf{2});
+%% estimate SII improvement with BSIM (optional)
+[deltaSrt, Srtin, Srtout] = computeSiiImprovement(...
+    targetSignal{1,2}, interfSignal{1,2}, ...
+    enhancedSignalTarget{1,2}, enhancedSignalInterf{1,2},...
+    AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(2,2));
+
+%% DAGA
+%% Generate test signal (DAGA)
+
+% DAGA: target 0 degrees, interferer 60 degrees
+TestSignalParameters.testSignalType = 'DAGA';
+[testSignal, targetSignal, interfSignal, fsHrtf] = ...
+    testSignalGenerator(TestSignalParameters);
+
+% adjust sampling rate to gammatone filterbank
+mixedSignal = resample(testSignal, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+targetSignal = resample(targetSignal, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+interfSignal = resample(interfSignal, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+
+% time vector for plotting
+dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
+timeVec = dt:dt:dt*length(mixedSignal);
+
+%% Parameters
+AlgorithmParameters.p0SearchRangeHz = [100 350];
+AlgorithmParameters.snrThresholdInDb = 10;
+AlgorithmParameters.targetRangeDeg = [-5 5];
 %% Enhance mixed speech
 % tic
 % processedSignal = blockFeedingRoutine(testSignal,BlockFeedingParameters,...
@@ -123,11 +221,13 @@ tic
 toc
 enhancedSignalMixed = enhancedSignalMixed ./ ...
     max(max(abs(enhancedSignalMixed)));
-%% Evaluate enhanced mixed speech
 
-evalMixed = evaluateAlgorithm(dataMixed.p0DetectedIndexVectors, AlgorithmParameters, ...
-    dataMixed.p0SearchRangeSamplesVector, mixedSignal, timeVec, dataMixed.ivsMaskCells, ...
-    dataMixed.azimuthDegCells, dataMixed.targetSampleIndices, dataMixed.interfSampleIndices, centerFreqsHz, false);
+%% Evaluate enhanced mixed speech
+evalMixed = evaluateAlgorithm(dataMixed.p0DetectedIndexVectors, ...
+    AlgorithmParameters, dataMixed.p0SearchRangeSamplesVector, ...
+    mixedSignal, timeVec, dataMixed.ivsMaskCells, ...
+    dataMixed.azimuthDegCells, dataMixed.targetSampleIndices, ...
+    dataMixed.interfSampleIndices, centerFreqsHz, false);
 
 %% Enhance target speech
 tic
@@ -137,9 +237,11 @@ toc
 enhancedSignalTarget = enhancedSignalTarget./max(max(abs(enhancedSignalTarget)));
 %% Evaluate enhanced target speech
 
-evalTarget = evaluateAlgorithm(dataTarget.p0DetectedIndexVectors, AlgorithmParameters, ...
-    dataTarget.p0SearchRangeSamplesVector, targetSignal, timeVec, dataTarget.ivsMaskCells, ...
-    dataTarget.azimuthDegCells, dataTarget.targetSampleIndices, dataTarget.interfSampleIndices, centerFreqsHz, false);
+evalTarget = evaluateAlgorithm(dataTarget.p0DetectedIndexVectors, ...
+    AlgorithmParameters, dataTarget.p0SearchRangeSamplesVector, ...
+    targetSignal, timeVec, dataTarget.ivsMaskCells, ...
+    dataTarget.azimuthDegCells, dataTarget.targetSampleIndices, ...
+    dataTarget.interfSampleIndices, centerFreqsHz, false);
 
 p0SearchRangeHz = evalMixed.p0SearchRangeFreqVector;
 %% Enhance interferer speech
@@ -150,9 +252,11 @@ toc
 enhancedSignalInterf = enhancedSignalInterf./max(max(abs(enhancedSignalInterf)));
 %% Evaluate enhanced interferer speech
 
-evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, AlgorithmParameters, ...
-    dataInterf.p0SearchRangeSamplesVector, interfSignal, timeVec, dataInterf.ivsMaskCells, ...
-    dataInterf.azimuthDegCells, dataInterf.targetSampleIndices, dataInterf.interfSampleIndices, centerFreqsHz, false);
+evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, ...
+    AlgorithmParameters, dataInterf.p0SearchRangeSamplesVector, ...
+    interfSignal, timeVec, dataInterf.ivsMaskCells, ...
+    dataInterf.azimuthDegCells, dataInterf.targetSampleIndices, ...
+    dataInterf.interfSampleIndices, centerFreqsHz, false);
 
 %% Play mixed signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
@@ -221,7 +325,8 @@ plotDAGAresults(evalMixed, evalTarget, evalInterf, ...
 
 function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     AlgorithmParameters, p0SearchRangeSamplesVector, testSignal, timeVec, ...
-    ivsMask, azimuthDegCells, targetSampleIndices, interfSampleIndices, fc, Plotting)
+    ivsMask, azimuthDegCells, targetSampleIndices, interfSampleIndices, fc,...
+    Plotting)
 
     nBands = AlgorithmParameters.Gammatone.nBands;
         
@@ -280,7 +385,8 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     hBar = bar(evaluation.p0SearchRangeSecondsVector(evaluation.GR),...
         evaluation.GC);
 %     set(gca,'XScale','log');
-    title('p0 detection histogram',['total no. of subband samples: ',num2str(numel(testSignal)*nBands)])
+    title('p0 detection histogram',['total no. of subband samples: ',...
+        num2str(numel(testSignal)*nBands)])
     xlabel('Period (s)')
     ylabel('No. of occurences in subband samples')
     set(gca,'FontSize',14);

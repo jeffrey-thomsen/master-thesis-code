@@ -14,7 +14,7 @@
 % AlgorithmStates - see above
 % simulationData - struct containing intermediate results from the
 % different algorithm stages for evaluating its performance
-function [enhancedSignal, AlgorithmStates, simulationData] = ...
+function [enhancedSignal, AlgorithmStates, SimulationData] = ...
   speechEnhancement(inputSignal, AlgorithmParameters, AlgorithmStates)
 
     % Gammatone analysis filterbank - decompose signal into frequency bands
@@ -49,20 +49,24 @@ function [enhancedSignal, AlgorithmStates, simulationData] = ...
             p0DetectedIndexVectors, AlgorithmParameters);
         
         % store data for evaluating simulation
-        simulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
-        simulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
-        simulationData.ipdRadCells = ipdRadCells;
-        simulationData.ivsMaskCells = ivsMaskCells;
-        simulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
-        simulationData.azimuthDegCells = azimuthDegCells;
-        simulationData.targetSampleIndices = targetSampleIndices;
-        simulationData.interfSampleIndices = interfSampleIndices;
-        simulationData.itdSecCells = itdSecCells;
-        simulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
+        SimulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
+        SimulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
+        SimulationData.ipdRadCells = ipdRadCells;
+        SimulationData.ivsMaskCells = ivsMaskCells;
+        SimulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
+        SimulationData.azimuthDegCells = azimuthDegCells;
+        SimulationData.targetSampleIndices = targetSampleIndices;
+        SimulationData.interfSampleIndices = interfSampleIndices;
+        SimulationData.itdSecCells = itdSecCells;
+        SimulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
     
+        SimulationData.sigmaDesired = sigmaDesired;
+        SimulationData.deltaDesired = deltaDesired;
+        SimulationData.snrDesired = snrDesired;
+
     else % just for testing the gammatone filterbank without processing
         enhancedSubbandSignalArray = subbandSignalArray;
-        simulationData = 'No simulation data. Only gammatone decomposition and resynthesis.';
+        SimulationData.msg = 'No simulation data. Only gammatone decomposition and resynthesis.';
     end
     
     % Gammatone synthesis filterbank - resynthesize enhanced subband signals
