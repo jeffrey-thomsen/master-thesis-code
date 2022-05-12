@@ -91,10 +91,10 @@ dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
 timeVec = dt:dt:dt*length(testSignal{1,1});
 toc
 
-%% Enhance speech
+%% Speech enhancement processing
 
-for iSpeakerCombo = 1:2 %nSpeakerCombos
-    for jAnglePerm = 1:2 %nAnglePerms
+for iSpeakerCombo = [1,18,32,44] %nSpeakerCombos
+    for jAnglePerm = [3,4] %nAnglePerms
 
     tic
 
@@ -111,22 +111,6 @@ for iSpeakerCombo = 1:2 %nSpeakerCombos
         1:length(testSignal{iSpeakerCombo, jAnglePerm});
     toc
 
-    % Shadow method: enhance target and interferer signals separately with 
-    % the SimulationData from the mixed signal processing for assessing
-    % SNR improvement
-    tic
-    enhancedSignalTarget{iSpeakerCombo, jAnglePerm} = ...
-        enhanceComparisonSignal('target', ...
-        targetSignal{iSpeakerCombo, jAnglePerm}, ...
-        SimulationData{iSpeakerCombo, jAnglePerm}.Data, ...
-        AlgorithmStates, AlgorithmParameters);
-    enhancedSignalInterf{iSpeakerCombo, jAnglePerm} = ...
-        enhanceComparisonSignal('interf', ...
-        interfSignal{iSpeakerCombo, jAnglePerm}, ...
-        SimulationData{iSpeakerCombo, jAnglePerm}.Data, ...
-        AlgorithmStates, AlgorithmParameters);
-    toc
-
 %     enhancedSignal{iSignal} = enhancedSignal{iSignal} ./ ...
 %         max(max(abs(enhancedSignal{iSignal})));
 
@@ -139,52 +123,70 @@ for iSpeakerCombo = 1:2 %nSpeakerCombos
     end
 end
 
-% Alternative evaluation of full signal at once
-% for iSignal = 1
-%     tic
-%     [enhancedSignal{iSignal}, ~, SimulationData{iSignal}.Data] = ...
-%         speechEnhancement(testSignal{iSignal}, AlgorithmParameters, ...
-%         AlgorithmStates);
-%     toc
-%     SimulationData{iSignal}.blockLength = length(testSignal{iSignal});
-%     SimulationData{iSignal}.nBlocks = 1;
-%     SimulationData{iSignal}.signalIndices = 1:length(testSignal{iSignal});
-% end
-%% Evaluate enhanced mixed speech
+%% Evaluation
+i = 18;
+j = 3;
 
-% compare chosen bins to IBM
+%% compare chosen glimpses to IBM
 [targetSubbandSignals, ~] = ...
-        subbandDecompositionBinaural(targetSignal{2}, AlgorithmStates);
+        subbandDecompositionBinaural(targetSignal{i,j}, AlgorithmStates);
 [interfSubbandSignals, ~] = ...
-        subbandDecompositionBinaural(interfSignal{2}, AlgorithmStates);
+        subbandDecompositionBinaural(interfSignal{i,j}, AlgorithmStates);
 
-[ibmTarget.L, ibmInterf.L] = ...
-    computeIbm(targetSubbandSignals.L, interfSubbandSignals.L, AlgorithmParameters);
-[ibmTarget.R, ibmInterf.R] = ...
-    computeIbm(targetSubbandSignals.R, interfSubbandSignals.R, AlgorithmParameters);
+[ibmTarget.L, ibmInterf.L] = computeIbm(targetSubbandSignals.L, ...
+    interfSubbandSignals.L, AlgorithmParameters);
+[ibmTarget.R, ibmInterf.R] = computeIbm(targetSubbandSignals.R, ...
+    interfSubbandSignals.R, AlgorithmParameters);
 
-[maskTarget, maskInterf] = extractAppliedMask(SimulationData, ...
+[maskTarget, maskInterf] = extractAppliedMask(SimulationData{i,j}, ...
     AlgorithmParameters.Gammatone.nBands);
 
-nSamples = length(maskTarget{2}.L);
+nSamples = length(maskTarget.L);
 ibmTarget.L = ibmTarget.L(1:nSamples,:);
 ibmTarget.R = ibmTarget.R(1:nSamples,:);
 ibmInterf.L = ibmInterf.L(1:nSamples,:);
 ibmInterf.R = ibmInterf.R(1:nSamples,:);
 
 [precision, recall] = ...
-    compareToIbm(maskTarget{2}, maskInterf{2}, ibmTarget, ibmInterf);
+    compareToIbm(maskTarget, maskInterf, ibmTarget, ibmInterf);
 
-% compute SNR improvement - assumption: target and interferer processing
-% can be superimposed, which should hold if the IBM precision is
-% satisfactory
-snrImprovement = computeSnrImprovement(targetSignal{2}, interfSignal{2}, ...
-    enhancedSignalTarget{2}, enhancedSignalInterf{2});
+%% compute separate signals for SNR improvement calculation
+[enhancedTarget_H, enhancedInterf_H] = hagermanMethod(targetSignal{i,j}, ...
+  interfSignal{i,j}, anglePermutations(j,1), AlgorithmParameters, ...
+  AlgorithmStates);
+[enhancedTarget_S, enhancedInterf_S] = shadowMethod(targetSignal{i,j}, ...
+  interfSignal{i,j}, anglePermutations(j,1),  SimulationData{i,j}.Data, ...
+  AlgorithmParameters, AlgorithmStates);
+
+% how well did it work?
+mse_H = norm(enhancedSignal{i,j} - (enhancedTarget_H + enhancedInterf_H));
+mse_S = norm(enhancedSignal{i,j} - (enhancedTarget_S + enhancedInterf_S));
+%% compute SNR improvement
+snrImprovement_H = computeSnrImprovement(targetSignal{i,j}, ...
+    interfSignal{i,j}, enhancedTarget_H, enhancedInterf_H);
+snrImprovement_S = computeSnrImprovement(targetSignal{i,j}, ...
+    interfSignal{i,j}, enhancedTarget_S, enhancedInterf_S);
+
 %% estimate SII improvement with BSIM (optional)
-[deltaSrt, Srtin, Srtout] = computeSiiImprovement(...
-    targetSignal{1,2}, interfSignal{1,2}, ...
-    enhancedSignalTarget{1,2}, enhancedSignalInterf{1,2},...
-    AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(2,2));
+[deltaSrt_H, Srtin_H, Srtout_H] = computeSiiImprovement(...
+    targetSignal{i,j}, interfSignal{i,j}, ...
+    enhancedTarget_H, enhancedInterf_H,...
+    AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(j,2));
+
+[deltaSrt_S, Srtin_S, Srtout_S] = computeSiiImprovement(...
+    targetSignal{i,j}, interfSignal{i,j}, ...
+    enhancedTarget_S, enhancedInterf_S,...
+    AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(j,2));
+
+%% Play signals
+box1 = msgbox('Play original signal (Ensure volume is adequately set)');
+waitfor(box1);
+soundsc(testSignal{i,j}, AlgorithmParameters.Gammatone.samplingRateHz);
+box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
+    ' section of script (adjusting filter variables if necessary)']);
+waitfor(box2);
+soundsc(enhancedSignal{i,j}, AlgorithmParameters.Gammatone.samplingRateHz);
+
 
 %% DAGA
 %% Generate test signal (DAGA)
@@ -261,29 +263,29 @@ evalInterf = evaluateAlgorithm(dataInterf.p0DetectedIndexVectors, ...
 %% Play mixed signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(mixedSignal, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(mixedSignal, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedSignalMixed, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(enhancedSignalMixed, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Play target signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(targetSignal, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(targetSignal, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedSignalTarget, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(enhancedSignalTarget, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Play interferer signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-sound(interfSignal, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(interfSignal, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-sound(enhancedSignalInterf, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(enhancedSignalInterf, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Save simulation data
 
