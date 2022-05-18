@@ -1,5 +1,5 @@
-function [testSignal, targetSignal, interfSignal, fsHrtf, ...
-  anglePermutations, speakerCombinations] = ...
+function [testSignal, testSignalHagerman, targetSignal, interfSignal, ...
+  fsHrtf, anglePermutations, speakerCombinations] = ...
   testSignalGenerator(TestSignalParameters, hrtf)
 
 % check desired test signal type (keep compatible with old unit tests)
@@ -129,8 +129,10 @@ switch TestSignalParameters.testSignalType
         speakerCombinations = nchoosek(1:nSources, nSpeakers);
         nSpeakerCombos = size(speakerCombinations, 1);
         
-        % add up and normalize test signal
+        % add up and normalize test signal (+ signals for algorithm
+        % evaluation)
         mixedSignalCell  = cell([nSpeakerCombos, nAnglePerms]);
+        mixedSignalCellHagerman  = cell([nSpeakerCombos, nAnglePerms]);
         targetSignalCell = cell([nSpeakerCombos, nAnglePerms]);
         interfSignalCell = cell([nSpeakerCombos, nAnglePerms]);
         for iSpeakerCombo = 1:nSpeakerCombos
@@ -157,10 +159,20 @@ switch TestSignalParameters.testSignalType
                 mixedSignalCell{iSpeakerCombo, jAnglePerm} = ...
                     targetSignalCell{iSpeakerCombo, jAnglePerm} + ...
                     interfSignalCell{iSpeakerCombo, jAnglePerm};
+                mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm} = ...
+                    targetSignalCell{iSpeakerCombo, jAnglePerm} - ...
+                    interfSignalCell{iSpeakerCombo, jAnglePerm};
 
-                scalingFactor = max(max(mixedSignalCell{iSpeakerCombo, jAnglePerm}));
+                scalingFactorCandidate(1) = max(max(mixedSignalCell{iSpeakerCombo, jAnglePerm}));
+                scalingFactorCandidate(2) = max(max(mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm}));
+                scalingFactorCandidate(3) = max(max(targetSignalCell{iSpeakerCombo, jAnglePerm}));
+                scalingFactorCandidate(4) = max(max(interfSignalCell{iSpeakerCombo, jAnglePerm}));
+                scalingFactor = max(scalingFactorCandidate);
+                % Do I need a global scaling factor instead?
                 mixedSignalCell{iSpeakerCombo, jAnglePerm} = ...
                     mixedSignalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
+                mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm} = ...
+                    mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm} / scalingFactor;
                 targetSignalCell{iSpeakerCombo, jAnglePerm} = ...
                     targetSignalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
                 interfSignalCell{iSpeakerCombo, jAnglePerm} = ...
@@ -169,12 +181,11 @@ switch TestSignalParameters.testSignalType
         end
 
         testSignal = mixedSignalCell;
+        testSignalHagerman = mixedSignalCellHagerman;
         targetSignal = targetSignalCell;
         interfSignal = interfSignalCell;
         anglePermutations = targetAngles(anglePermutations);
         speakerCombinations = speakerIdVector(speakerCombinations);%nchoosek(speakerIdVector, nAngles);
-
-        % MIGHT WANT: global scaling factor for all test signals
 
 end
 
