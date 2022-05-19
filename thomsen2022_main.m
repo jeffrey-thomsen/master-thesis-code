@@ -137,7 +137,7 @@ for iSpeakerCombo = 1:nSpeakerCombos %18%[1,18,32,44] %nSpeakerCombos
         fprintf('Estimated remaining time (hh:mm:ss): %02.0f:%02.0f:%02.0f \n', ...
             floor(estRemTime/3600), ...
             floor(mod(estRemTime,3600)/60), ...
-            mod(estRemTime,60));
+            floor(mod(estRemTime,60)));
     end
 end
 
@@ -221,11 +221,86 @@ for i = 1:nSpeakerCombos
         fprintf('Estimated remaining time (hh:mm:ss): %02.0f:%02.0f:%02.0f \n', ...
             floor(estRemTime/3600), ...
             floor(mod(estRemTime,3600)/60), ...
-            mod(estRemTime,60));
+            floor(mod(estRemTime,60)));
     end
+end
+%% Evaluation evaluation
+
+for i=1:45;for j=1:6;precisionTarget(i,j)=precision{i,j}.Target;end;end
+figure;histogram(precisionTarget)
+figure('position',[2000 50 560 1260]);heatmap(precisionTarget)
+for i=1:45;for j=1:6;precisionInterf(i,j)=precision{i,j}.Interf;end;end
+figure;histogram(precisionInterf)
+figure('position',[2000 50 560 1260]);heatmap(precisionInterf)
+
+figure;histogram(snrImprovement_H)
+figure('position',[2000 50 560 1260]);heatmap(snrImprovement_H)
+
+for i=1:45;for j=1:6;recallTarget(i,j)=recall{i,j}.Target;end;end
+figure;histogram(recallTarget)
+for i=1:45;for j=1:6;recallInterf(i,j)=recall{i,j}.Interf;end;end
+figure;histogram(recallInterf)
+%% compute glimpse and ivs mask ratios
+sumtarget = 0;for i=1:30;
+sumtarget = sumtarget+numel(SimulationData{26,4}.Data.targetSampleIndices.R{i});
+end;
+suminterf = 0;for i=1:30;
+suminterf = suminterf+numel(SimulationData{26,4}.Data.interfSampleIndices.R{i});
+end;
+glimpseRatio_J = (suminterf+sumtarget)/(30*36563)
+
+sumivsmask = 0;for i=1:30;
+sumivsmask = sumivsmask+nnz(SimulationData{26,4}.Data.ivsMaskCells{i});
+end;
+sumivsmask/(30*36563)
+
+norm(testSignal{iSpeakerCombo, jAnglePerm}-enhancedSignal{iSpeakerCombo, jAnglePerm})
+%% SNR and BSIM evaluation
+i = 26; j = 4;
+[enhancedTarget_H{i,j}, enhancedInterf_H{i,j}] = ...
+    hagermanMethod('pre-calc', anglePermutations(j,1), ...
+    AlgorithmParameters, AlgorithmStates, ...
+    enhancedSignal{i,j}, testSignalHagerman{i,j});
+computeSnrImprovement(targetSignal{i,j}, ...
+    interfSignal{i,j}, enhancedTarget_H{i,j}, enhancedInterf_H{i,j})
+
+[deltaSrt_J, SrtIn_J, SrtOut_J] = computeSiiImprovement(...
+targetSignal{i,j}, interfSignal{i,j}, ...
+enhancedTarget_H{i,j}, enhancedInterf_H{i,j},...
+AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(j,2));
+%% IBM
+i = 26; j = 4;
+[maskTarget_J, maskInterf_J] = extractAppliedMask(SimulationData{i,j}, ...
+    AlgorithmParameters.Gammatone.nBands);
+
+% compare chosen glimpses to IBM
+[precision_J, recall_J] = ...
+    compareToIbm(maskTarget_J, maskInterf_J, ibmTarget{i,j}, ibmInterf{i,j});
+
+%% instationarity
+
+nnz(diff(maskTarget_J.L',1,2))/(30*36563)
+nnz(diff(maskTarget_J.R',1,2))/(30*36563)
+nnz(diff(maskInterf_J.L',1,2))/(30*36563)
+nnz(diff(maskInterf_J.R',1,2))/(30*36563)
+
+%% IBM instationarity
+i = 26; j = 4;
+nnz(diff(ibmTarget{i,j}.L',1,2))/(30*36563)
+nnz(diff(ibmTarget{i,j}.R',1,2))/(30*36563)
+nnz(diff(ibmTarget{i,j}.L',1,2))/(30*36563)
+nnz(diff(ibmTarget{i,j}.R',1,2))/(30*36563)
+%%
+i=25;
+for j=1:6
+plotIbmGlimpses(maskTarget{i,j}, maskInterf{i,j}, ...
+    ibmTarget{i,j}, ibmInterf{i,j}, targetSignal{i,j}, ...
+    interfSignal{i,j}, SimulationData{i,j}, timeVec, ...
+    AlgorithmParameters.Gammatone.samplingRateHz);
 end
 
 %% Play signals
+i = 26; j = 4;
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
 soundsc(testSignal{i,j}, AlgorithmParameters.Gammatone.samplingRateHz);
@@ -234,6 +309,32 @@ box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
 waitfor(box2);
 soundsc(enhancedSignal{i,j}, AlgorithmParameters.Gammatone.samplingRateHz);
 
+%% Save simulation data
+
+% audiowrite(['testInput','.wav'], mixedSignal, ...
+%     AlgorithmParameters.Gammatone.samplingRateHz);
+% audiowrite(['testJeffrey','.wav'], enhancedMixedSignal, ...
+%     AlgorithmParameters.Gammatone.samplingRateHz);
+
+MetaData = struct;
+[~,MetaData.gitCommitHash] = system('git rev-parse --short HEAD');
+gitURL = 'https://github.com/jeffrey-thomsen/master-thesis-code/commit/';
+MetaData.gitCommitURL = strcat(gitURL, MetaData.gitCommitHash);
+MetaData.date = datetime('now','Format','yyyy-MM-dd''_''HH-mm');
+dateString = string(MetaData.date);
+
+filename = string(dateString+'_simulation_data.mat');
+save(filename,...
+'AlgorithmParameters', 'TestSignalParameters', ...
+'anglePermutations', 'speakerCombinations',...
+'centerFreqsHz', 'timeVec', 'SimulationData',...
+'maskTarget', 'maskInterf', 'ibmTarget', 'ibmInterf', 'precision', 'recall',...
+'enhancedSignal', 'enhancedTarget_H', 'enhancedInterf_H', 'mse_H', 'mse_S',...
+'snrImprovement_S', 'snrImprovement_H',...
+'testSignal', 'targetSignal', 'interfSignal', 'testSignalHagerman',...
+'lookuptable',...
+'MetaData',...
+'-v7.3')
 %%
     case 'DAGA'
 %%

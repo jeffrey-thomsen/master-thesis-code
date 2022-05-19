@@ -55,10 +55,10 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
     
 
     %% evaluate target and interferer angle conditions
-    targetConditionLogicalVectorReCoherentPeriodicSamples = ... % target in front
+    targetConditionLogicalVectorReCoherentPeriodicSamples = ...
         coherentPeriodicAzimuthDegVector >= AlgorithmParameters.targetRangeDeg(1) & ...
         coherentPeriodicAzimuthDegVector <= AlgorithmParameters.targetRangeDeg(2);
-    interfererConditionLogicalVectorReCoherentPeriodicSamples = ... % interference from the sides
+    interfererConditionLogicalVectorReCoherentPeriodicSamples = ...
         coherentPeriodicAzimuthDegVector < AlgorithmParameters.targetRangeDeg(1) | ...
         coherentPeriodicAzimuthDegVector > AlgorithmParameters.targetRangeDeg(2);
 
@@ -105,6 +105,12 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
             ismember(periodicSampleIndices, interfererSampleIndices);
         targetSampleIndices = [];
         targetConditionLogicalVectorRePeriodicSamples = [];
+
+        targetSampleIndices = periodicSampleIndices;
+        targetConditionLogicalVectorRePeriodicSamples = ...
+            ismember(periodicSampleIndices, targetSampleIndices);
+        interfererSampleIndices = [];
+        interfererConditionLogicalVectorRePeriodicSamples = [];
     end
 
     %% replace periodic samples from target and interferer angles with
