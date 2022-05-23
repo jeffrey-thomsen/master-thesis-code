@@ -9,6 +9,7 @@
 
 %% Start/Simulation interface
 clear
+
 % msgbox('Hi, you are running the Thomsen2022 speech enhancement algorithm!')
 Publication = 'MA'; % 'DAGA', 'MA'
 %% Preparation
@@ -22,7 +23,7 @@ AlgorithmParameters = AlgorithmParametersConstructor();
 % Alterations of simulation parameters
 AlgorithmParameters.p0SearchRangeHz = [100 350];
 AlgorithmParameters.ChenP0Detection = false;
-AlgorithmParameters.coherenceMask   = true;
+AlgorithmParameters.coherenceMask   = false;
 AlgorithmParameters.azimuthPooling  = false;
 AlgorithmParameters.snrCondition    = false;
 AlgorithmParameters.DOAProcessing   = true;
@@ -32,7 +33,7 @@ AlgorithmParameters.snrLPFilterTau = 0.04;
 AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
 AlgorithmParameters.nCyclesTau = 5; % Dietz2011
 
-AlgorithmParameters.snrThresholdInDb = 10;
+AlgorithmParameters.snrThresholdInDb = -100;
 
 BlockFeedingParameters.blockLength = 500; % seems to be the fastest
 
@@ -73,8 +74,9 @@ tic
 % define parameters
 TestSignalParameters.testSignalType = 'Battery';
 TestSignalParameters.speakerIds = ...
-    ["0251M", "0652M", "1462F", "2035F", "2277F", ...
-     "3575F", "5694M", "7176M", "7729M", "7976F"];
+    ["0251M", "0652M", "2035F", "3575F"];
+%     ["0251M", "0652M", "1462F", "2035F", "2277F", ...
+%      "3575F", "5694M", "7176M", "7729M", "7976F"];
 TestSignalParameters.targetAngles = [-90, 0, 60];
 %[90, 0, -60]
 %[-90, 0, 30, 60]
@@ -83,7 +85,7 @@ TestSignalParameters.targetAngles = [-90, 0, 60];
 %[-90, -60, -30, -15, 0, 15, 30, 60, 90]
 TestSignalParameters.nSpeakers = 2;
 
-[testSignal, testSignalHagerman, targetSignal, interfSignal, fsHrtf, ...
+[testSignal, targetSignal, interfSignal, fsHrtf, testSignalHagerman, ...
     anglePermutations, speakerCombinations] = ...
     testSignalGenerator(TestSignalParameters, hrtf);
 
@@ -107,6 +109,7 @@ toc
 %% Speech enhancement processing
 nSignals = numel(testSignal);
 iSignal = 0;
+
 nSpeakerCombos = length(speakerCombinations);
 nAnglePerms = length(anglePermutations);
 for iSpeakerCombo = 1:nSpeakerCombos %18%[1,18,32,44] %nSpeakerCombos
@@ -141,7 +144,7 @@ for iSpeakerCombo = 1:nSpeakerCombos %18%[1,18,32,44] %nSpeakerCombos
     end
 end
 
-%% Evaluation
+% Evaluation
 % i = 18;
 % j = 3;
 Plotting = false;
@@ -225,59 +228,75 @@ for i = 1:nSpeakerCombos
     end
 end
 %% Evaluation evaluation
+%('position',[2000 50 560 1260])
+for iSp=1:nSpeakerCombos;for jAng=1:nAnglePerms;precisionTarget(iSp,jAng)=precision{iSp,jAng}.Target;end;end
+figure;histogram(precisionTarget);title('target precision');
+figure;heatmap(precisionTarget);title('target precision');
+for iSp=1:nSpeakerCombos;for jAng=1:nAnglePerms;precisionInterf(iSp,jAng)=precision{iSp,jAng}.Interf;end;end
+figure;histogram(precisionInterf);title('interf precision');
+figure;heatmap(precisionInterf);title('interf precision');
 
-for i=1:45;for j=1:6;precisionTarget(i,j)=precision{i,j}.Target;end;end
-figure;histogram(precisionTarget)
-figure('position',[2000 50 560 1260]);heatmap(precisionTarget)
-for i=1:45;for j=1:6;precisionInterf(i,j)=precision{i,j}.Interf;end;end
-figure;histogram(precisionInterf)
-figure('position',[2000 50 560 1260]);heatmap(precisionInterf)
+figure;histogram(snrImprovement_H);title('delta SNR');
+figure;heatmap(snrImprovement_H);title('delta SNR');
 
-figure;histogram(snrImprovement_H)
-figure('position',[2000 50 560 1260]);heatmap(snrImprovement_H)
+for iSp=1:nSpeakerCombos;for jAng=1:nAnglePerms;recallTarget(iSp,jAng)=recall{iSp,jAng}.Target;end;end
+figure;histogram(recallTarget);title('target recall');
+for iSp=1:nSpeakerCombos;for jAng=1:nAnglePerms;recallInterf(iSp,jAng)=recall{iSp,jAng}.Interf;end;end
+figure;histogram(recallInterf);title('interf recall');
 
-for i=1:45;for j=1:6;recallTarget(i,j)=recall{i,j}.Target;end;end
-figure;histogram(recallTarget)
-for i=1:45;for j=1:6;recallInterf(i,j)=recall{i,j}.Interf;end;end
-figure;histogram(recallInterf)
-%% compute glimpse and ivs mask ratios
-sumtarget = 0;for i=1:30;
-sumtarget = sumtarget+numel(SimulationData{26,4}.Data.targetSampleIndices.R{i});
+%% {26,4} investigation
+iSp = 6; jAng = 4;
+AlgorithmParameters.snrThresholdInDb = 10;
+AlgorithmParameters.DOAProcessing = true;
+AlgorithmParameters.coherenceMask = false;
+
+[enhancedSignal{6,4}, ~, ...
+SimulationData{6,4}.Data] = ...
+speechEnhancement(testSignal{6,4}, ...
+AlgorithmParameters, AlgorithmStates);
+%%
+% compute glimpse and ivs mask ratios
+
+
+sumtarget = 0;for iBand= 1:30;
+sumtarget = sumtarget+numel(SimulationData{6,4}.Data.targetSampleIndices.R{iBand});
 end;
-suminterf = 0;for i=1:30;
-suminterf = suminterf+numel(SimulationData{26,4}.Data.interfSampleIndices.R{i});
+suminterf = 0;for iBand= 1:30;
+suminterf = suminterf+numel(SimulationData{6,4}.Data.interfSampleIndices.R{iBand});
 end;
 glimpseRatio_J = (suminterf+sumtarget)/(30*36563)
 
-sumivsmask = 0;for i=1:30;
-sumivsmask = sumivsmask+nnz(SimulationData{26,4}.Data.ivsMaskCells{i});
+sumivsmask = 0;for iBand = 1:30;
+sumivsmask = sumivsmask+nnz(SimulationData{26,4}.Data.ivsMaskCells{iBand});
 end;
 sumivsmask/(30*36563)
 
-norm(testSignal{iSpeakerCombo, jAnglePerm}-enhancedSignal{iSpeakerCombo, jAnglePerm})
+norm(testSignal{6,4}-enhancedSignal{6,4})
 %% SNR and BSIM evaluation
-i = 26; j = 4;
-[enhancedTarget_H{i,j}, enhancedInterf_H{i,j}] = ...
-    hagermanMethod('pre-calc', anglePermutations(j,1), ...
-    AlgorithmParameters, AlgorithmStates, ...
-    enhancedSignal{i,j}, testSignalHagerman{i,j});
-computeSnrImprovement(targetSignal{i,j}, ...
-    interfSignal{i,j}, enhancedTarget_H{i,j}, enhancedInterf_H{i,j})
 
-[deltaSrt_J, SrtIn_J, SrtOut_J] = computeSiiImprovement(...
-targetSignal{i,j}, interfSignal{i,j}, ...
-enhancedTarget_H{i,j}, enhancedInterf_H{i,j},...
-AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(j,2));
-%% IBM
-i = 26; j = 4;
-[maskTarget_J, maskInterf_J] = extractAppliedMask(SimulationData{i,j}, ...
+[enhancedTarget_H{6,4}, enhancedInterf_H{6,4}] = ...
+    hagermanMethod('pre-calc', anglePermutations(4,1), ...
+    AlgorithmParameters, AlgorithmStates, ...
+    enhancedSignal{6,4}, testSignalHagerman{6,4});
+%%
+dsnr = computeSnrImprovement(targetSignal{6,4}, ...
+    interfSignal{6,4}, enhancedTarget_H{6,4}, enhancedInterf_H{6,4})
+
+% [deltaSrt_J, SrtIn_J, SrtOut_J] = computeSiiImprovement(...
+% targetSignal{iSp,jAng}, interfSignal{iSp,jAng}, ...
+% enhancedTarget_H{iSp,jAng}, enhancedInterf_H{iSp,jAng},...
+% AlgorithmParameters.Gammatone.samplingRateHz, anglePermutations(jAng,2));
+
+% IBM
+
+[maskTarget_J, maskInterf_J] = extractAppliedMask(SimulationData{6,4}, ...
     AlgorithmParameters.Gammatone.nBands);
 
 % compare chosen glimpses to IBM
 [precision_J, recall_J] = ...
-    compareToIbm(maskTarget_J, maskInterf_J, ibmTarget{i,j}, ibmInterf{i,j});
+    compareToIbm(maskTarget_J, maskInterf_J, ibmTarget{6,4}, ibmInterf{6,4});
 
-%% instationarity
+% instationarity
 
 nnz(diff(maskTarget_J.L',1,2))/(30*36563)
 nnz(diff(maskTarget_J.R',1,2))/(30*36563)
@@ -285,29 +304,29 @@ nnz(diff(maskInterf_J.L',1,2))/(30*36563)
 nnz(diff(maskInterf_J.R',1,2))/(30*36563)
 
 %% IBM instationarity
-i = 26; j = 4;
-nnz(diff(ibmTarget{i,j}.L',1,2))/(30*36563)
-nnz(diff(ibmTarget{i,j}.R',1,2))/(30*36563)
-nnz(diff(ibmTarget{i,j}.L',1,2))/(30*36563)
-nnz(diff(ibmTarget{i,j}.R',1,2))/(30*36563)
-%%
-i=25;
-for j=1:6
-plotIbmGlimpses(maskTarget{i,j}, maskInterf{i,j}, ...
-    ibmTarget{i,j}, ibmInterf{i,j}, targetSignal{i,j}, ...
-    interfSignal{i,j}, SimulationData{i,j}, timeVec, ...
+iSp = 6; jAng = 4;
+nnz(diff(ibmTarget{iSp,jAng}.L',1,2))/(30*36563)
+nnz(diff(ibmTarget{iSp,jAng}.R',1,2))/(30*36563)
+nnz(diff(ibmTarget{iSp,jAng}.L',1,2))/(30*36563)
+nnz(diff(ibmTarget{iSp,jAng}.R',1,2))/(30*36563)
+%% Show how glimpses vary with angle configurations
+iSp = 6;
+for jAng = 1:6
+plotIbmGlimpses(maskTarget{iSp,jAng}, maskInterf{iSp,jAng}, ...
+    ibmTarget{iSp,jAng}, ibmInterf{iSp,jAng}, targetSignal{iSp,jAng}, ...
+    interfSignal{iSp,jAng}, SimulationData{iSp,jAng}, timeVec, ...
     AlgorithmParameters.Gammatone.samplingRateHz);
 end
 
 %% Play signals
-i = 26; j = 4;
+iSp = 6; jAng = 4;
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
-soundsc(testSignal{i,j}, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(testSignal{iSp,jAng}, AlgorithmParameters.Gammatone.samplingRateHz);
 box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
-soundsc(enhancedSignal{i,j}, AlgorithmParameters.Gammatone.samplingRateHz);
+soundsc(enhancedSignal_111{iSp,jAng}, AlgorithmParameters.Gammatone.samplingRateHz);
 
 %% Save simulation data
 
@@ -327,7 +346,7 @@ filename = string(dateString+'_simulation_data.mat');
 save(filename,...
 'AlgorithmParameters', 'TestSignalParameters', ...
 'anglePermutations', 'speakerCombinations',...
-'centerFreqsHz', 'timeVec', 'SimulationData',...
+'centerFreqsHz', 'timeVec', ...
 'maskTarget', 'maskInterf', 'ibmTarget', 'ibmInterf', 'precision', 'recall',...
 'enhancedSignal', 'enhancedTarget_H', 'enhancedInterf_H', 'mse_H', 'mse_S',...
 'snrImprovement_S', 'snrImprovement_H',...
@@ -335,6 +354,7 @@ save(filename,...
 'lookuptable',...
 'MetaData',...
 '-v7.3')
+%'SimulationData')%,...
 %%
     case 'DAGA'
 %%

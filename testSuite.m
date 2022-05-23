@@ -40,6 +40,105 @@ function testPredefinedTestSignalGeneratorSignalOutputLength(testCase)
     verifySize(testCase,testSignal,expectedSize)
 end
 
+function testDAGATestSignalGenerator(testCase)
+% test if testSignalGenerator.m returns test signals with equal lengths
+% and an SNR of roughly 0dB and normalized to +/-1 for the DAGA plots
+    
+    % Setup
+    TestSignalParameters.testSignalType = 'DAGA';
+    % Exercise
+    [testSignal, targetSignal, interfSignal, fsHrtf] = ...
+        testSignalGenerator(TestSignalParameters);
+    % Verify
+    expectedSize = size(testSignal);
+    verifySize(testCase,targetSignal,expectedSize)
+    verifySize(testCase,interfSignal,expectedSize)
+
+    verifyEqual(testCase,fsHrtf,44100)
+
+    snr = 10 * log10(sum(abs(targetSignal(:))).^2/sum(abs(interfSignal(:))).^2);
+    verifyEqual(testCase,snr,0,'AbsTol',1)
+
+    verifyLessThanOrEqual(testCase,abs(testSignal),1)
+    verifyLessThanOrEqual(testCase,abs(targetSignal),1)
+    verifyLessThanOrEqual(testCase,abs(interfSignal),1)
+
+end
+
+function testBatteryTestSignalGenerator(testCase)
+% test if testSignalGenerator.m returns test signals with equal lengths
+% and an SNR of roughly 0dB and normalized to +/-1, 
+% plus the expected angle permutations and speaker combinations,
+% and verify that the test signals and Hagerman test signals can be 
+% recomposed to the pure target and interferer signals,
+% for the 'Battery' test signal generation method
+    
+    % Setup
+
+    % define parameters
+    TestSignalParameters.testSignalType = 'Battery';
+    TestSignalParameters.speakerIds = ...
+        ["0251M", "0652M", "1462F", "2035F", "2277F", ...
+         "3575F", "5694M", "7176M", "7729M", "7976F"];
+    TestSignalParameters.targetAngles = [-90, -15, 0, 30, 60];
+    TestSignalParameters.nSpeakers = 2;
+    hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
+
+    % Exercise
+
+    [testSignal, targetSignal, interfSignal, fsHrtf, ...
+        testSignalHagerman, anglePermutations, speakerCombinations] = ...
+        testSignalGenerator(TestSignalParameters, hrtf);
+
+    % Verify
+
+    expectedSize = size(testSignal);
+    verifySize(testCase,targetSignal,expectedSize)
+    verifySize(testCase,interfSignal,expectedSize)
+    verifySize(testCase,testSignalHagerman,expectedSize)
+
+    verifyEqual(testCase,fsHrtf,44100)
+    
+    for iSignal = 1:numel(testSignal)
+        verifyEqual(testCase, ...
+            testSignal{iSignal} + testSignalHagerman{iSignal}, ...
+            2*(targetSignal{iSignal}),'AbsTol',1e-12)
+        verifyEqual(testCase, ...
+            testSignal{iSignal} - testSignalHagerman{iSignal}, ...
+            2*(interfSignal{iSignal}),'AbsTol',1e-12)
+
+        snr = 10 * log10(sum(abs(targetSignal{iSignal}(:))).^2 / ...
+                         sum(abs(interfSignal{iSignal}(:))).^2);
+        verifyEqual(testCase,snr,0,'AbsTol',2.5)
+
+        verifyLessThanOrEqual(testCase,abs(testSignal{iSignal}),1)
+        verifyLessThanOrEqual(testCase,abs(targetSignal{iSignal}),1)
+        verifyLessThanOrEqual(testCase,abs(interfSignal{iSignal}),1)
+        verifyLessThanOrEqual(testCase,abs(testSignalHagerman{iSignal}),1)
+    end
+
+    expectedAnglePerms = [-90, -15; -90,   0; -90, 30; -90, 60;...
+                          -15, -90; -15,   0; -15, 30; -15, 60;...
+                            0, -90;   0, -15;   0, 30;   0, 60;...
+                           30, -90;  30, -15;  30,  0;  30, 60;...
+                           60, -90;  60, -15;  60,  0;  60, 30];
+    verifyEqual(testCase,anglePermutations,expectedAnglePerms)
+
+    expectedSpeakerCombos = ["0251M" "0652M"; "0251M" "1462F"; ...
+        "0251M"	"2035F"; "0251M" "2277F"; "0251M" "3575F"; "0251M" "5694M";...
+        "0251M"	"7176M"; "0251M" "7729M"; "0251M" "7976F"; "0652M" "1462F";...
+        "0652M"	"2035F"; "0652M" "2277F"; "0652M" "3575F"; "0652M" "5694M";...
+        "0652M"	"7176M"; "0652M" "7729M"; "0652M" "7976F"; "1462F" "2035F";...
+        "1462F"	"2277F"; "1462F" "3575F"; "1462F" "5694M"; "1462F" "7176M";...
+        "1462F"	"7729M"; "1462F" "7976F"; "2035F" "2277F"; "2035F" "3575F";...
+        "2035F"	"5694M"; "2035F" "7176M"; "2035F" "7729M"; "2035F" "7976F";...
+        "2277F"	"3575F"; "2277F" "5694M"; "2277F" "7176M"; "2277F" "7729M";...
+        "2277F"	"7976F"; "3575F" "5694M"; "3575F" "7176M"; "3575F" "7729M";...
+        "3575F"	"7976F"; "5694M" "7176M"; "5694M" "7729M"; "5694M" "7976F";...
+        "7176M"	"7729M"; "7176M" "7976F"; "7729M" "7976F"];
+    verifyEqual(testCase,speakerCombinations,expectedSpeakerCombos)
+end
+
 % testInputSignal.m
 function testTestInputSignalConvertsArrayDimensions(testCase)
 % test if testInputSignal.m returns signal as Nx2 matrix
@@ -979,12 +1078,62 @@ function testInterauralToAzimuthMapping(testCase)
 end
 
 % Harmonic enhancement
-function testHarmonicEnhancemne(testCase)
+function testHarmonicEnhancement(testCase)
 %     [subbandSignalArray.L, targetSampleIndices.L{iBand}, ...
 %         interfererSampleIndices.L{iBand}] = harmonicEnhancement(...
 %         subbandSignalArray.L, iBand, ivsMask, ...
 %         p0DetectedIndexVectors.L, azimuthDegCells, snrDesired.L, ...
 %         sigmaDesired.L, deltaDesired.L, AlgorithmParameters);
+end
+
+function testTargetAngleChange(testCase)
+% test if a change in target angle yields the expected simulation results,
+% e.g. speech defined as target on the left will result in higher signal
+% energy in the left channel compared to the right, and vice versa
+
+    % Setup
+
+    % generate a test signal with two speakers at -60° and +60°
+    TestSignalParameters.testSignalType = 'Battery';
+    TestSignalParameters.speakerIds = ...
+        ["0251M", "1462F"];
+    TestSignalParameters.targetAngles = [-60, 60];
+    TestSignalParameters.nSpeakers = 2;
+
+    [testSignal,~,~,fsHrtf] = testSignalGenerator(TestSignalParameters);
+    
+    % set up algorithm parameters
+    AlgorithmParameters = AlgorithmParametersConstructor();
+    AlgorithmParameters.coherenceMask    = false;
+    AlgorithmParameters.snrThresholdInDb = -100;
+    load('2022-05-11_itd_lookuptable_annotated.mat');
+    lookuptable = lookuptable.lookuptable;
+    AlgorithmParameters.lookuptable = lookuptable;
+    AlgorithmParameters.Gammatone.samplingRateHz = ...
+    ceil(2*AlgorithmParameters.Gammatone.fHigh);
+    [AlgorithmStates, AlgorithmParameters.Gammatone.nBands] = ...
+        AlgorithmStatesConstructor(AlgorithmParameters);
+    testSignal{1} = resample(testSignal{1}, ...
+        AlgorithmParameters.Gammatone.samplingRateHz, fsHrtf);
+
+    % Exercise
+
+    AlgorithmParameters.targetRangeDeg = -60 + [-5 5];
+    rightOutput = speechEnhancement(testSignal{1},...
+        AlgorithmParameters, AlgorithmStates);
+
+    AlgorithmParameters.targetRangeDeg = +60 + [-5 5];
+    leftOutput = speechEnhancement(testSignal{1},...
+        AlgorithmParameters, AlgorithmStates);
+
+    % Verify
+
+    verifyLessThan(testCase,sum(abs(rightOutput(:,1))).^2, ...
+                            sum(abs(leftOutput(:,1))).^2)
+    
+    verifyLessThan(testCase,sum(abs(leftOutput(:,2))).^2, ...
+                            sum(abs(rightOutput(:,2))).^2)
+
 end
 %% Full Speech enhancement algorithm
 function testSpeechEnhancementInBlockFeederCompare(testCase)

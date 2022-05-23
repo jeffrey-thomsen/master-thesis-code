@@ -39,6 +39,7 @@ function [] = plotIbmGlimpses(maskTarget, maskInterf, ibmTarget, ibmInterf, ...
                 15, 'red','filled');
     end
     legend('correct target glimpses', 'incorrect target glimpses')
+    title('Target mask')
 
     figure;
 
@@ -74,5 +75,6 @@ function [] = plotIbmGlimpses(maskTarget, maskInterf, ibmTarget, ibmInterf, ...
                 15, 'red','filled');
     end
     legend('correct interferer glimpses', 'incorrect interferer glimpses')
+    title('Interferer mask')
 
 end

@@ -1,5 +1,5 @@
-function [testSignal, testSignalHagerman, targetSignal, interfSignal, ...
-  fsHrtf, anglePermutations, speakerCombinations] = ...
+function [testSignal, targetSignal, interfSignal, fsHrtf, ...
+  testSignalHagerman, anglePermutations, speakerCombinations] = ...
   testSignalGenerator(TestSignalParameters, hrtf)
 
 % check desired test signal type (keep compatible with old unit tests)
@@ -9,7 +9,7 @@ elseif nargin == 1
    if ~isfield(TestSignalParameters, 'testSignalType')
        TestSignalParameters.testSignalType = 'WhiteNoise';
    end
-   if ~(strcmp(TestSignalParameters.testSignalType, 'WhiteNoise'))
+   if ~strcmp(TestSignalParameters.testSignalType, 'WhiteNoise')
        hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
    end
 end
@@ -57,7 +57,7 @@ switch TestSignalParameters.testSignalType
         % add and normalize test signal
         mixedSignal = targetSignal + interfSignal;
         
-        scalingFactor = max(max(mixedSignal));
+        scalingFactor = max(abs(mixedSignal),[],'all');
         
         testSignal  = mixedSignal ./scalingFactor;
         targetSignal = targetSignal./scalingFactor;
@@ -115,16 +115,25 @@ switch TestSignalParameters.testSignalType
             end
         end
         
-        % MISSING: VARIABLE SNR
 
         % compute all possible combinations of speakers and angles
+        % Note: This will generate all possible test signals given the
+        % number of speakers per test signal, the availble collection of
+        % speech samples and possible DOA azimuth angles. However, not all
+        % categorizations as target or interferer are realized by this.
+        % E.g. in a two-speaker scenario, a combination of two specific
+        % speakers will occur at all possible angle permutations, but the
+        % categorization as target and interferer is fixed. This is done to
+        % limit simulation times and should be accounted for by ordering 
+        % the speech samples in such a way that male and female speakers 
+        % are represented as target sources in equal proportions.
         nk = nchoosek(1:nAngles, nSpeakers);
         p = zeros(0, nSpeakers);
         for i = 1:size(nk, 1)
             pi = perms(nk(i, :));
             p = unique([p; pi], 'rows');
         end
-        anglePermutations = p;%perms(1:nAngles);
+        anglePermutations = p;
         nAnglePerms = size(anglePermutations, 1);
         speakerCombinations = nchoosek(1:nSources, nSpeakers);
         nSpeakerCombos = size(speakerCombinations, 1);
@@ -163,12 +172,12 @@ switch TestSignalParameters.testSignalType
                     targetSignalCell{iSpeakerCombo, jAnglePerm} - ...
                     interfSignalCell{iSpeakerCombo, jAnglePerm};
 
-                scalingFactorCandidate(1) = max(max(mixedSignalCell{iSpeakerCombo, jAnglePerm}));
-                scalingFactorCandidate(2) = max(max(mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm}));
-                scalingFactorCandidate(3) = max(max(targetSignalCell{iSpeakerCombo, jAnglePerm}));
-                scalingFactorCandidate(4) = max(max(interfSignalCell{iSpeakerCombo, jAnglePerm}));
+                scalingFactorCandidate(1) = max(abs(mixedSignalCell{iSpeakerCombo, jAnglePerm}),[],'all');
+                scalingFactorCandidate(2) = max(abs(mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm}),[],'all');
+                scalingFactorCandidate(3) = max(abs(targetSignalCell{iSpeakerCombo, jAnglePerm}),[],'all');
+                scalingFactorCandidate(4) = max(abs(interfSignalCell{iSpeakerCombo, jAnglePerm}),[],'all');
                 scalingFactor = max(scalingFactorCandidate);
-                % Do I need a global scaling factor instead?
+
                 mixedSignalCell{iSpeakerCombo, jAnglePerm} = ...
                     mixedSignalCell{iSpeakerCombo, jAnglePerm} / scalingFactor;
                 mixedSignalCellHagerman{iSpeakerCombo, jAnglePerm} = ...
@@ -185,7 +194,7 @@ switch TestSignalParameters.testSignalType
         targetSignal = targetSignalCell;
         interfSignal = interfSignalCell;
         anglePermutations = targetAngles(anglePermutations);
-        speakerCombinations = speakerIdVector(speakerCombinations);%nchoosek(speakerIdVector, nAngles);
+        speakerCombinations = speakerIdVector(speakerCombinations);
 
 end
 
