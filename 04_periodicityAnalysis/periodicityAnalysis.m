@@ -90,9 +90,9 @@ function [sigmaCells, deltaCells, snrCells, ...
         
         % intra-subband SNR peak detection: find p0 candidate for each
         % signal sample
-        snrThreshold = 10^(0.1*AlgorithmParameters.snrThresholdInDb);
         p0CandidateSampleIndexVector = ...
-            subbandSnrPeakDetectionBinaural(normalizedSnr, snrThreshold);
+            subbandSnrPeakDetectionBinaural(normalizedSnr, ...
+            AlgorithmParameters);
 
         % calculate Sigmas, Deltas and SNR for p0 candidates from subband
         % signal
@@ -100,6 +100,17 @@ function [sigmaCells, deltaCells, snrCells, ...
             calcSigmaDeltaBinaural(subbandSignal, ...
             p0SearchRangeSamplesVector, States, 'discrete', ...
             p0CandidateSampleIndexVector);
+        
+%         interimp0S.L = sign(p0CandidateSigma.L);
+%         interimp0S.R = sign(p0CandidateSigma.R);
+%         interimp0D.L = sign(p0CandidateDelta.L);
+%         interimp0D.R = sign(p0CandidateDelta.R);
+%         nSL = normalizedSnr.L(p0CandidateSampleIndexVector.L>0,:);
+%         pSIVL = p0CandidateSampleIndexVector.L(p0CandidateSampleIndexVector.L>0);
+%         for k=1:numel(pSIVL); p0CandidateSnr.L(k) = nSL(k,pSIVL(k)); end;
+%         nSR = normalizedSnr.R(p0CandidateSampleIndexVector.R>0,:);
+%         pSIVR = p0CandidateSampleIndexVector.R(p0CandidateSampleIndexVector.R>0);
+%         for k=1:numel(pSIVR); p0CandidateSnr.R(k) = nSR(k,pSIVR(k)); end;
         p0CandidateSnr = calcSNRBinaural(p0CandidateSigma, p0CandidateDelta);
 
         % write states back into global structs

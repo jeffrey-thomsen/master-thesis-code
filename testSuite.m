@@ -804,6 +804,7 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
 % the maximum p0 value in samples
 
     % Setup
+
     nP0Values = 50;
     for iP0Value = 1:nP0Values
         testSignal = testSignalGenerator;
@@ -811,8 +812,11 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
         testSignal = testSignalGenerator;
         snr.R(:,iP0Value) = testSignal(:,2);
     end
+
+    AlgorithmParameters.snrCondition = false;
+
     % Exercise
-    p0Candidates = subbandSnrPeakDetectionBinaural(snr, 0);
+    p0Candidates = subbandSnrPeakDetectionBinaural(snr, AlgorithmParameters);
 
     % Validate
     expectedSize = [size(snr.L,1), 1];
@@ -834,8 +838,10 @@ function testSubbandSnrPeakDetectionBinauralValues(testCase)
         snr.R(iSample,:) = (linspace(0,1,1000)).*sin(pi/100:pi/100:10*pi);
     end
 
+    AlgorithmParameters.snrCondition = false;
+
     % Exercise
-    p0Candidates = subbandSnrPeakDetectionBinaural(snr, 0);
+    p0Candidates = subbandSnrPeakDetectionBinaural(snr, AlgorithmParameters);
 
     % Validate
 %     expectedP0Candidates.L = 50*ones(nSamples,1);
