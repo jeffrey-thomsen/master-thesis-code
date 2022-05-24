@@ -27,7 +27,9 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.coherenceMask = true;
     AlgorithmParameters.azimuthPooling = false;
     AlgorithmParameters.snrCondition = true;
+    AlgorithmParameters.bruemannSnrCondition = false;
     AlgorithmParameters.DOAProcessing = true;
+    AlgorithmParameters.bruemannSimpleDOA = false;
     AlgorithmParameters.Cancellation = true;
     AlgorithmParameters.Enhancement = true;
 

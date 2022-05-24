@@ -82,16 +82,18 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
     interfererConditionLogicalVectorRePeriodicSamples = ...
         ismember(periodicSampleIndices, interfererSampleIndices);
 
-    if AlgorithmParameters.snrCondition
-        % apply additional SNR condition
+    if AlgorithmParameters.bruemannSnrCondition
+        % apply SNR condition according to Bruemann, applying a periodicity
+        % threshold for cancellation but not enhancement
+        assert(~AlgorithmParameters.snrCondition, 'Double SNR conditions (global and Bruemann) not allowed. Choose one!')
         snrConditionLogicalVectorRePeriodicSamples = ...
-            snrDesired{iBand}>1; % AlgorithmParameters.snrThresholdInDb
+            snrDesired{iBand}>1;
         snrConditionPeriodicSampleIndices = ...
-            periodicSampleIndices(snrConditionLogicalVectorRePeriodicSamples);
+            periodicSampleIndices(snrConditionLogicalVectorRePeriodicSamples(1:numel(periodicSampleIndices)));
         
         interfererConditionLogicalVectorRePeriodicSamples = ...
             interfererConditionLogicalVectorRePeriodicSamples ...
-            & snrConditionLogicalVectorRePeriodicSamples;
+            & snrConditionLogicalVectorRePeriodicSamples(1:numel(periodicSampleIndices))';
         interfererSampleIndices = ...
             interfererSampleIndices(ismember(interfererSampleIndices, snrConditionPeriodicSampleIndices));
     end
@@ -105,7 +107,8 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
             ismember(periodicSampleIndices, interfererSampleIndices);
         targetSampleIndices = [];
         targetConditionLogicalVectorRePeriodicSamples = [];
-
+        
+        % control condition: apply enhancement
         targetSampleIndices = periodicSampleIndices;
         targetConditionLogicalVectorRePeriodicSamples = ...
             ismember(periodicSampleIndices, targetSampleIndices);
