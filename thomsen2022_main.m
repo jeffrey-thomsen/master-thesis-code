@@ -25,8 +25,8 @@ AlgorithmParameters = AlgorithmParametersConstructor();
 
 % Alterations of simulation parameters
 % main parameters of interest
-AlgorithmParameters.snrCondition = false;
-AlgorithmParameters.coherenceMask = false;
+AlgorithmParameters.snrCondition = true;
+AlgorithmParameters.coherenceMask = true;
 
 % to evaluate how much performance cancellation adds
 AlgorithmParameters.Cancellation = true;
@@ -45,14 +45,13 @@ AlgorithmParameters.bruemannSimpleDOA = false;
 tic
 switch Publication
     case 'MA'
-load('2022-05-11_itd_lookuptable_annotated.mat');
+load('2022-05-26_itd_lookuptable_annotated.mat');
     case 'DAGA'
 load('2022-03-04_itd_lookuptable_annotated.mat');
 end
 lookuptable = lookuptable.lookuptable;
 
 % hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-% AlgorithmParameters.Gammatone.samplingRateHz = hrtf.Data.SamplingRate;
 % lookuptable = interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,...
 %     "0251M.flac","0652M.flac","1462F.flac","2035F.flac","2277F.flac",...
 %     "3575F.flac","5694M.flac","7176M.flac","7729M.flac","7976F.flac");

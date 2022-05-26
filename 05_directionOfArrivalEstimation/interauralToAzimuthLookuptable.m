@@ -27,8 +27,6 @@ function lookuptable = ...
     [FilterStates, nBands] = ...
         AlgorithmStatesConstructor(AlgorithmParameters);
     AlgorithmParameters.Gammatone.nBands = nBands;
-    
-    Obj = hrtf;
 
     polynomialOrder = 12; % Dietz2011 paper says 9;
     
@@ -58,11 +56,11 @@ function lookuptable = ...
     % use only the -90 to 90 degree part of the HRIR set
     elevationAngleDeg = 0;
     idFrontHor = ...
-        Obj.SourcePosition(:,2) == elevationAngleDeg & ... % horizontal plane
-        (((Obj.SourcePosition(:,1) >= -90 & Obj.SourcePosition(:,1) < 0) ... % front right
-        | Obj.SourcePosition(:,1) >= 270) | ... % alternative front right
-        (Obj.SourcePosition(:,1) >= 0 & Obj.SourcePosition(:,1) <= 90)); % front left
-    azimuthAngleDeg = Obj.SourcePosition(idFrontHor,1);
+        hrtf.SourcePosition(:,2) == elevationAngleDeg & ... % horizontal plane
+        (((hrtf.SourcePosition(:,1) >= -90 & hrtf.SourcePosition(:,1) < 0) ... % front right
+        | hrtf.SourcePosition(:,1) >= 270) | ... % alternative front right
+        (hrtf.SourcePosition(:,1) >= 0 & hrtf.SourcePosition(:,1) <= 90)); % front left
+    azimuthAngleDeg = hrtf.SourcePosition(idFrontHor,1);
     % translate angles into -90...90 degree range
     azimuthAngleDeg(azimuthAngleDeg>180) = ...
         azimuthAngleDeg(azimuthAngleDeg>180)-360;
