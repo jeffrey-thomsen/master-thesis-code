@@ -117,6 +117,7 @@ switch TestSignalParameters.testSignalType
         
 
         % compute all possible combinations of speakers and angles
+
         % Note: This will generate all possible test signals given the
         % number of speakers per test signal, the availble collection of
         % speech samples and possible DOA azimuth angles. However, not all
@@ -127,16 +128,34 @@ switch TestSignalParameters.testSignalType
         % limit simulation times and should be accounted for by ordering 
         % the speech samples in such a way that male and female speakers 
         % are represented as target sources in equal proportions.
-        nk = nchoosek(1:nAngles, nSpeakers);
-        p = zeros(0, nSpeakers);
-        for i = 1:size(nk, 1)
-            pi = perms(nk(i, :));
-            p = unique([p; pi], 'rows');
+
+        % Alternatively, use the twoSpeakerVariety flag for a two-speaker
+        % scenario. It will choose every second from a full set of possible
+        % speaker combinations, including order, to result in a larger
+        % variation of target speakers while maintaining the same number of
+        % test signals as in the conventional way.
+
+        if TestSignalParameters.twoSpeakerVariety
+            nkSpeaker = nchoosek(1:nSources, nSpeakers);
+            pSpeaker =  zeros(0, nSpeakers);
+            for i = 1:size(nkSpeaker, 1)
+                pi = perms(nkSpeaker(i, :));
+                pSpeaker = unique([pSpeaker; pi], 'rows');
+            end
+            speakerCombinations = pSpeaker(1:2:end,:);
+        else
+            speakerCombinations = nchoosek(1:nSources, nSpeakers);
         end
-        anglePermutations = p;
-        nAnglePerms = size(anglePermutations, 1);
-        speakerCombinations = nchoosek(1:nSources, nSpeakers);
         nSpeakerCombos = size(speakerCombinations, 1);
+
+        nkAngle = nchoosek(1:nAngles, nSpeakers);
+        pAngle = zeros(0, nSpeakers);
+        for i = 1:size(nkAngle, 1)
+            pi = perms(nkAngle(i, :));
+            pAngle = unique([pAngle; pi], 'rows');
+        end
+        anglePermutations = pAngle;
+        nAnglePerms = size(anglePermutations, 1);
         
         % add up and normalize test signal (+ signals for algorithm
         % evaluation)
