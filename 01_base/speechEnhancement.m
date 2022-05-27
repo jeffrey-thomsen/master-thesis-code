@@ -56,17 +56,17 @@ function [enhancedSignal, AlgorithmStates, SimulationData] = ...
         % store data for evaluating simulation
         SimulationData.p0DetectedIndexVectors = p0DetectedIndexVectors;
         SimulationData.p0SearchRangeSamplesVector = p0SearchRangeSamplesVector;
-        SimulationData.ipdRadCells = ipdRadCells;
+%         SimulationData.ipdRadCells = ipdRadCells;
         SimulationData.ivsMaskCells = ivsMaskCells;
-        SimulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
+%         SimulationData.ipdDisambiguatedLogicalCells = ipdDisambiguatedLogicalCells;
         SimulationData.azimuthDegCells = azimuthDegCells;
         SimulationData.targetSampleIndices = targetSampleIndices;
         SimulationData.interfSampleIndices = interfSampleIndices;
-        SimulationData.itdSecCells = itdSecCells;
-        SimulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
+%         SimulationData.itdSecCells = itdSecCells;
+%         SimulationData.itdDisambiguatedLogicalCells = itdDisambiguatedLogicalCells;
     
-        SimulationData.sigmaDesired = sigmaDesired;
-        SimulationData.deltaDesired = deltaDesired;
+%         SimulationData.sigmaDesired = sigmaDesired;
+%         SimulationData.deltaDesired = deltaDesired;
         SimulationData.snrDesired = snrDesired;
 
     else % just for testing the gammatone filterbank without processing
