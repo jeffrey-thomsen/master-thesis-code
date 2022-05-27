@@ -73,6 +73,15 @@ nBands = AlgorithmParameters.Gammatone.nBands;
 switch Publication
     case 'MA'
 
+%% Metadata for saving simulation data later
+
+MetaData = struct;
+[~,MetaData.gitCommitHash] = system('git rev-parse --short HEAD');
+gitURL = 'https://github.com/jeffrey-thomsen/master-thesis-code/commit/';
+MetaData.gitCommitURL = strcat(gitURL, MetaData.gitCommitHash);
+MetaData.date = datetime('now','Format','yyyy-MM-dd''_''HH-mm');
+dateString = string(MetaData.date);
+
 
 %% Generate test signal battery
 
@@ -120,6 +129,8 @@ nAnglePerms = size(anglePermutations, 1);
 outputMixedSignal = cell(nSpeakerCombos, nAnglePerms);
 SimulationData = cell(nSpeakerCombos, nAnglePerms);
 
+estProcTime = 0;
+elapsedTime = 0;
 iSignal = 0;
 for iSp = 1:nSpeakerCombos 
     for jAn = 1:nAnglePerms
@@ -139,37 +150,106 @@ for iSp = 1:nSpeakerCombos
         SimulationData{iSp, jAn}.signalIndices = ...
             1:length(inputMixedSignal{iSp, jAn});
 
-        if iSignal > 1
-            estProcTime = 0.5*estProcTime + 0.5*toc;
-        else
-            estProcTime = toc;
-        end
-        estRemTime = (nSignals-iSignal)*estProcTime;
-        fprintf('Estimated remaining time (hh:mm:ss): %02.0f:%02.0f:%02.0f \n', ...
-            floor(estRemTime/3600), ...
-            floor(mod(estRemTime,3600)/60), ...
-            floor(mod(estRemTime,60)));
+        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime);
     end
 end
 
 
-%% Evaluation
+%% Evaluation using SimulationData
 
-inputSnr = cell(nSpeakerCombos, nAnglePerms);
-ibmTarget = cell(nSpeakerCombos, nAnglePerms);
-ibmInterf = cell(nSpeakerCombos, nAnglePerms);
 maskAppliedTarget = cell(nSpeakerCombos, nAnglePerms);
 maskAppliedInterf = cell(nSpeakerCombos, nAnglePerms);
+outputTargetSignal_S = cell(nSpeakerCombos, nAnglePerms);
+outputInterfSignal_S = cell(nSpeakerCombos, nAnglePerms);
+
+estProcTime = 0;
+elapsedTime = 0;
+iSignal = 0;
+for iSp = 1:nSpeakerCombos
+    for jAn = 1:nAnglePerms
+
+        iSignal = iSignal + 1;
+        fprintf('SimulationData Evaluating signal %1i of %1i\n\n', iSignal, nSignals);
+        tic
+
+        [maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}] = ...
+            extractAppliedMask(SimulationData{iSp,jAn}, nBands);
+
+        if Plotting
+            plotIbmGlimpses(maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
+                ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn}, inputTargetSignal{iSp,jAn}, ...
+                inputInterfSignal{iSp,jAn}, SimulationData{iSp,jAn}, timeVec, ...
+                AlgorithmParameters.Gammatone.samplingRateHz);
+        end
+
+        % compute separate enhanced signals for SNR improvement calculation
+        [outputTargetSignal_S{iSp,jAn}, outputInterfSignal_S{iSp,jAn}] = ...
+            shadowMethod(inputTargetSignal{iSp,jAn}, inputInterfSignal{iSp,jAn}, ...
+            anglePermutations(jAn,1), SimulationData{iSp,jAn}.Data, ...
+            AlgorithmParameters, AlgorithmStates);
+
+        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime);
+    end
+end
+
+
+%% Save SimulationData subset
+
+% tic
+% 
+% p0SearchRangeSamplesVector = SimulationData{1}.Data.p0SearchRangeSamplesVector;
+% nSpeakerCombos = size(speakerCombinations, 1);
+% nAnglePerms = size(anglePermutations, 1);
+% SubsetSimulationData = cell(nSpeakerCombos, nAnglePerms);
+% for iSp=1:nSpeakerCombos
+%     for jAn=1:nAnglePerms
+%         SubsetSimulationData{iSp, jAn}.p0DetectedIndexVectors = ...
+%             SimulationData{iSp, jAn}.Data.p0DetectedIndexVectors;
+%         SubsetSimulationData{iSp, jAn}.targetSampleIndices = ...
+%             SimulationData{iSp, jAn}.Data.targetSampleIndices;
+%         SubsetSimulationData{iSp, jAn}.interfSampleIndices = ...
+%             SimulationData{iSp, jAn}.Data.interfSampleIndices;
+%     end
+% end
+% filename = string(dateString+'_glimpse_data.mat');
+% save(filename, 'SubsetSimulationData', 'MetaData', '-v7.3')
+% 
+% toc
+
+tic
+
+filename = string(dateString+'_simulation_data.mat');
+save(filename, ...
+'AlgorithmParameters', 'TestSignalParameters', ...
+'anglePermutations', 'speakerCombinations', ...
+'SimulationData', ...
+'MetaData', '-v7.3')
+
+toc
+
+
+%%
+
+clear SimulationData
+
+
+%% Evaluation
+
+% inputSnr = cell(nSpeakerCombos, nAnglePerms);
+ibmTarget = cell(nSpeakerCombos, nAnglePerms);
+ibmInterf = cell(nSpeakerCombos, nAnglePerms);
+
 precision = cell(nSpeakerCombos, nAnglePerms);
 recall = cell(nSpeakerCombos, nAnglePerms);
 outputTargetSignal_H = cell(nSpeakerCombos, nAnglePerms);
 outputInterfSignal_H = cell(nSpeakerCombos, nAnglePerms);
-outputTargetSignal_S = cell(nSpeakerCombos, nAnglePerms);
-outputInterfSignal_S = cell(nSpeakerCombos, nAnglePerms);
+
 deltaSNR_H = zeros(nSpeakerCombos, nAnglePerms);
 deltaSNR_S = zeros(nSpeakerCombos, nAnglePerms);
-outputSnr = cell(nSpeakerCombos, nAnglePerms);
+% outputSnr = cell(nSpeakerCombos, nAnglePerms);
 
+estProcTime = 0;
+elapsedTime = 0;
 iSignal = 0;
 for iSp = 1:nSpeakerCombos
     for jAn = 1:nAnglePerms
@@ -184,30 +264,20 @@ for iSp = 1:nSpeakerCombos
         [inputInterfSubbandSignals, ~] = subbandDecompositionBinaural(...
             inputInterfSignal{iSp,jAn}, AlgorithmStates);
         
-        inputSnr{iSp,jAn}.L = computeTimeFreqSnr(inputTargetSubbandSignals.L, ...
+        inputSnr.L = computeTimeFreqSnr(inputTargetSubbandSignals.L, ...
             inputInterfSubbandSignals.L, samplingRateHz, nBands);
-        inputSnr{iSp,jAn}.R = computeTimeFreqSnr(inputTargetSubbandSignals.R, ...
+        inputSnr.R = computeTimeFreqSnr(inputTargetSubbandSignals.R, ...
             inputInterfSubbandSignals.R, samplingRateHz, nBands);
 
-        ibmTarget{iSp,jAn}.L = inputSnr{iSp,jAn}.L >  0;
-        ibmTarget{iSp,jAn}.R = inputSnr{iSp,jAn}.R >  0;
-        ibmInterf{iSp,jAn}.L = inputSnr{iSp,jAn}.L <= 0;
-        ibmInterf{iSp,jAn}.R = inputSnr{iSp,jAn}.R <= 0;
-
-        [maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}] = ...
-            extractAppliedMask(SimulationData{iSp,jAn}, nBands);
+        ibmTarget{iSp,jAn}.L = inputSnr.L >  0;
+        ibmTarget{iSp,jAn}.R = inputSnr.R >  0;
+        ibmInterf{iSp,jAn}.L = inputSnr.L <= 0;
+        ibmInterf{iSp,jAn}.R = inputSnr.R <= 0;
         
         % compare chosen glimpses to IBM
         [precision{iSp,jAn}, recall{iSp,jAn}] = compareToIbm(...
             maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
             ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn});
-        
-        if Plotting
-            plotIbmGlimpses(maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
-                ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn}, inputTargetSignal{iSp,jAn}, ...
-                inputInterfSignal{iSp,jAn}, SimulationData{iSp,jAn}, timeVec, ...
-                AlgorithmParameters.Gammatone.samplingRateHz);
-        end
         
         % compute separate enhanced signals for SNR improvement calculation
         [outputTargetSignal_H{iSp,jAn}, outputInterfSignal_H{iSp,jAn}] = ...
@@ -215,12 +285,6 @@ for iSp = 1:nSpeakerCombos
             AlgorithmParameters, AlgorithmStates, ...
             outputMixedSignal{iSp,jAn}, inputMixedSignal_H{iSp,jAn});
 
-        [outputTargetSignal_S{iSp,jAn}, outputInterfSignal_S{iSp,jAn}] = ...
-            shadowMethod(inputTargetSignal{iSp,jAn}, inputInterfSignal{iSp,jAn}, ...
-            anglePermutations(jAn,1), SimulationData{iSp,jAn}.Data, ...
-            AlgorithmParameters, AlgorithmStates);
-        
-        
         % compute SNR improvement
         deltaSNR_H(iSp,jAn) = computeSnrImprovement(...
             inputTargetSignal{iSp,jAn}, inputInterfSignal{iSp,jAn}, ...
@@ -229,16 +293,16 @@ for iSp = 1:nSpeakerCombos
             inputTargetSignal{iSp,jAn}, inputInterfSignal{iSp,jAn}, ...
             outputTargetSignal_S{iSp,jAn}, outputInterfSignal_S{iSp,jAn});
 
-        % compute TF gray mask SNR improvement
-        [outputTargetSubbandSignals_H, ~] = subbandDecompositionBinaural(...
-            outputTargetSignal_H{iSp,jAn}, AlgorithmStates);
-        [outputInterfSubbandSignals_H, ~] = subbandDecompositionBinaural(...
-            outputInterfSignal_H{iSp,jAn}, AlgorithmStates);
-
-        outputSnr{iSp,jAn}.L = computeTimeFreqSnr(outputTargetSubbandSignals_H.L, ...
-            outputInterfSubbandSignals_H.L, samplingRateHz, nBands);
-        outputSnr{iSp,jAn}.R = computeTimeFreqSnr(outputTargetSubbandSignals_H.R, ...
-            outputInterfSubbandSignals_H.R, samplingRateHz, nBands);
+%         % compute TF gray mask SNR improvement
+%         [outputTargetSubbandSignals_H, ~] = subbandDecompositionBinaural(...
+%             outputTargetSignal_H{iSp,jAn}, AlgorithmStates);
+%         [outputInterfSubbandSignals_H, ~] = subbandDecompositionBinaural(...
+%             outputInterfSignal_H{iSp,jAn}, AlgorithmStates);
+% 
+%         outputSnr{iSp,jAn}.L = computeTimeFreqSnr(outputTargetSubbandSignals_H.L, ...
+%             outputInterfSubbandSignals_H.L, samplingRateHz, nBands);
+%         outputSnr{iSp,jAn}.R = computeTimeFreqSnr(outputTargetSubbandSignals_H.R, ...
+%             outputInterfSubbandSignals_H.R, samplingRateHz, nBands);
         
         % estimate SII improvement with BSIM (optional)
         if BSIM
@@ -255,16 +319,7 @@ for iSp = 1:nSpeakerCombos
                 samplingRateHz, anglePermutations(jAn,2));
         end
 
-        if iSignal > 1
-            estProcTime = 0.5*estProcTime + 0.5*toc;
-        else
-            estProcTime = toc;
-        end
-        estRemTime = (nSignals-iSignal)*estProcTime;
-        fprintf('Estimated remaining time (hh:mm:ss): %02.0f:%02.0f:%02.0f \n', ...
-            floor(estRemTime/3600), ...
-            floor(mod(estRemTime,3600)/60), ...
-            floor(mod(estRemTime,60)));
+        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime);
     end
 end
 
@@ -342,44 +397,31 @@ end
 % audiowrite(['testJeffrey','.wav'], enhancedMixedSignal, ...
 %     AlgorithmParameters.Gammatone.samplingRateHz);
 
-MetaData = struct;
-[~,MetaData.gitCommitHash] = system('git rev-parse --short HEAD');
-gitURL = 'https://github.com/jeffrey-thomsen/master-thesis-code/commit/';
-MetaData.gitCommitURL = strcat(gitURL, MetaData.gitCommitHash);
-MetaData.date = datetime('now','Format','yyyy-MM-dd''_''HH-mm');
-dateString = string(MetaData.date);
-
-filename = string(dateString+'_simulation_data.mat');
+tic
+filename = string(dateString+'_signal_data.mat');
 save(filename,...
-'AlgorithmParameters', 'TestSignalParameters', ...
+'AlgorithmParameters', 'TestSignalParameters', 'AlgorithmStates',...
 'anglePermutations', 'speakerCombinations',...
 'centerFreqsHz', 'samplingRateHz', 'timeVec', ...
 'inputMixedSignal', 'inputTargetSignal', 'inputInterfSignal', 'inputMixedSignal_H',...
-'outputMixedSignal', 'outputTargetSignal_H', 'outputInterfSignal_H',...
+'outputMixedSignal','outputTargetSignal_H', 'outputInterfSignal_H',...
 'outputTargetSignal_S', 'outputInterfSignal_S',...
-'inputSnr', 'ibmTarget', 'ibmInterf', ...
-'outputSnr', 'maskAppliedTarget', 'maskAppliedInterf', ...
-'precision', 'recall', 'deltaSNR_S', 'deltaSNR_H',...
 'lookuptable', 'MetaData',...
 '-v7.3')
+toc
 
-% SimulationData subset
-p0SearchRangeSamplesVector = SimulationData{1}.Data.p0SearchRangeSamplesVector;
-nSpeakerCombos = size(speakerCombinations, 1);
-nAnglePerms = size(anglePermutations, 1);
-SubsetSimulationData = cell(nSpeakerCombos, nAnglePerms);
-for iSp=1:nSpeakerCombos
-    for jAn=1:nAnglePerms
-        SubsetSimulationData{iSp, jAn}.p0DetectedIndexVectors = ...
-            SimulationData{iSp, jAn}.Data.p0DetectedIndexVectors;
-        SubsetSimulationData{iSp, jAn}.targetSampleIndices = ...
-            SimulationData{iSp, jAn}.Data.targetSampleIndices;
-        SubsetSimulationData{iSp, jAn}.interfSampleIndices = ...
-            SimulationData{iSp, jAn}.Data.interfSampleIndices;
-    end
-end
-filename = string(dateString+'_glimpse_data.mat');
-save(filename, 'SubsetSimulationData', 'MetaData', '-v7.3')
+tic
+filename = string(dateString+'_evaluation_data.mat');
+save(filename,...
+'AlgorithmParameters', 'TestSignalParameters', ...
+'anglePermutations', 'speakerCombinations',...
+'ibmTarget', 'ibmInterf', ...
+'maskAppliedTarget', 'maskAppliedInterf', ...
+'precision', 'recall', 'deltaSNR_S', 'deltaSNR_H', ...
+'MetaData', '-v7.3')
+% 'inputSnr', 'outputSnr', 
+toc
+
 %%
     case 'DAGA'
 %%
@@ -522,12 +564,39 @@ save(filename,...
 
 end
 
+
+%%
+
 endTime = toc(startTime);
-fprintf('Total time elapsed (hh:mm:ss): %02.0f:%02.0f:%02.0f \n', ...
+fprintf('Total elapsed time (hh:mm:ss): %02.0f:%02.0f:%02.0f \n', ...
             floor(endTime/3600), ...
             floor(mod(endTime,3600)/60), ...
             floor(mod(endTime,60)));
+
+
 %% Auxiliary evaluation functions
+
+function [estProcTime, elapsedTime] = ...
+    estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime)
+    
+    if iSignal > 1
+        estProcTime = 0.9*estProcTime + 0.1*toc;
+    else
+        estProcTime = toc;
+    end
+    estRemTime1 = (nSignals-iSignal)*estProcTime;
+
+    elapsedTime = elapsedTime + toc;
+    estRemTime2 = (nSignals-iSignal)*(elapsedTime/iSignal);
+    
+    fprintf('Estimated remaining time (hh:mm:ss): %02.0f:%02.0f:%02.0f or %02.0f:%02.0f:%02.0f\n', ...
+        floor(estRemTime1/3600), ...
+        floor(mod(estRemTime1,3600)/60), ...
+        floor(mod(estRemTime1,60)), ...
+        floor(estRemTime2/3600), ...
+        floor(mod(estRemTime2,3600)/60), ...
+        floor(mod(estRemTime2,60)));
+end
 
 function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     AlgorithmParameters, p0SearchRangeSamplesVector, testSignal, timeVec, ...
