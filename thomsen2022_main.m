@@ -93,7 +93,7 @@ TestSignalParameters.speakerIds = ...
     ["0251M", "0652M", "1462F", "2035F", "2277F", ...
      "3575F", "5694M", "7176M", "7729M", "7976F"];
 TestSignalParameters.twoSpeakerVariety = true;
-TestSignalParameters.targetAngles = [-90, -15, 0, 30, 60];
+TestSignalParameters.targetAngles = [90, 0, -30];%[-90, -15, 0, 30, 60];
 TestSignalParameters.nSpeakers = 2;
 
 hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
@@ -102,6 +102,14 @@ hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
     hrtfSamplingRateHz, inputMixedSignal_H, ...
     anglePermutations, speakerCombinations] = ...
     testSignalGenerator(TestSignalParameters, hrtf);
+
+%%
+inputMixedSignal = inputMixedSignal(1:2:end,:);
+inputTargetSignal = inputTargetSignal(1:2:end,:);
+inputInterfSignal = inputInterfSignal(1:2:end,:);
+inputMixedSignal_H = inputMixedSignal_H(1:2:end,:);
+speakerCombinations = speakerCombinations(1:2:end,:);
+%%
 
 % resample signals to algorithm sampling rate
 for iSignal = 1:numel(inputMixedSignal)
@@ -133,7 +141,7 @@ SimulationData = cell(nSpeakerCombos, nAnglePerms);
 estProcTime = 0;
 elapsedTime = 0;
 iSignal = 0;
-for iSp = 1:nSpeakerCombos 
+for iSp = 1:nSpeakerCombos
     for jAn = 1:nAnglePerms
 
         iSignal = iSignal + 1;
