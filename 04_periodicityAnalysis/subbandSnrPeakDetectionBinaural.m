@@ -67,4 +67,9 @@ function p0CandidateGlobalMaxIndexVector = ...
     % If no maximum is found, the max() function returns the position 1 as
     % default, so this must be ensured to be removed again:
     p0CandidateGlobalMaxIndexVector(p0CandidateGlobalMaxIndexVector==1) = 0;
+
+    % control condition for evaluation
+    if AlgorithmParameters.RandomP0
+        p0CandidateGlobalMaxIndexVector(p0CandidateGlobalMaxIndexVector~=0) = randi(size(snr,2),nnz(p0CandidateGlobalMaxIndexVector),1);
+    end
 end

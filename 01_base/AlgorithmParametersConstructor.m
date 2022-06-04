@@ -33,5 +33,7 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.Cancellation = true;
     AlgorithmParameters.Enhancement = true;
 
+    AlgorithmParameters.RandomP0 = false;
+
 
 end

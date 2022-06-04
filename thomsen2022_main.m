@@ -31,6 +31,7 @@ AlgorithmParameters.coherenceMask = true;
 % to evaluate how much performance cancellation adds
 AlgorithmParameters.Cancellation = true;
 AlgorithmParameters.Enhancement = true;
+AlgorithmParameters.RandomP0 = false;
 
 % ideas for dealing with fc>1.4kHz
 AlgorithmParameters.ChenP0Detection = false;
