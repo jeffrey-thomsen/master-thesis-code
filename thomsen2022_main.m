@@ -327,55 +327,7 @@ end
 
 %% Evaluation evaluation
 
-nSpeakerCombos = size(speakerCombinations, 1);
-nAnglePerms = size(anglePermutations, 1);
-
-for iSp=1:nSpeakerCombos
-    for jAn=1:nAnglePerms
-        precisionTarget(iSp,jAn)=precision{iSp,jAn}.Target;
-    end
-end
-figure;
-histogram(precisionTarget);
-title('target precision');
-figure;
-heatmap(precisionTarget);
-title('target precision');
-for iSp=1:nSpeakerCombos
-    for jAn=1:nAnglePerms
-        precisionInterf(iSp,jAn)=precision{iSp,jAn}.Interf;
-    end
-end
-figure;
-histogram(precisionInterf);
-title('interf precision');
-figure;
-heatmap(precisionInterf);
-title('interf precision');
-
-figure;
-histogram(deltaSNR_H);
-title('delta SNR');
-figure;
-heatmap(deltaSNR_H);
-title('delta SNR');
-
-for iSp=1:nSpeakerCombos
-    for jAn=1:nAnglePerms
-        recallTarget(iSp,jAn)=recall{iSp,jAn}.Target;
-    end
-end
-figure;
-histogram(recallTarget);
-title('target recall');
-for iSp=1:nSpeakerCombos
-    for jAn=1:nAnglePerms
-        recallInterf(iSp,jAn)=recall{iSp,jAn}.Interf;
-    end
-end
-figure;
-histogram(recallInterf);
-title('interf recall');
+evaluationPlots(speakerCombinations, anglePermutations, precision, recall, deltaSNR_H);
 
 
 %% Play signals
