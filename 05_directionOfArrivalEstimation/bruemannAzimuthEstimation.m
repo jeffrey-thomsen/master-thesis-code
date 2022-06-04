@@ -3,7 +3,7 @@
 function azimuthDegCells = bruemannAzimuthEstimation(subbandSignalArray, ...
   AlgorithmParameters, AlgorithmStates)
 
-    warning('Bruemann simple azimiuth estimation is not implemented for block-wise processing, only whole signal!')
+%     warning('Bruemann simple azimiuth estimation is not implemented for block-wise processing, only whole signal!')
     
     nBands = AlgorithmParameters.Gammatone.nBands;
     azimuthDegCells = cell(1, nBands);
