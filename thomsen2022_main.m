@@ -25,12 +25,12 @@ AlgorithmParameters = AlgorithmParametersConstructor();
 
 % Alterations of simulation parameters
 % main parameters of interest
-AlgorithmParameters.snrCondition = true;
-AlgorithmParameters.coherenceMask = true;
+AlgorithmParameters.snrCondition = false;
+AlgorithmParameters.coherenceMask = false;
 
 % to evaluate how much performance cancellation adds
 AlgorithmParameters.Cancellation = true;
-AlgorithmParameters.Enhancement = true;
+AlgorithmParameters.Enhancement = false;
 AlgorithmParameters.RandomP0 = false;
 
 % ideas for dealing with fc>1.4kHz
@@ -103,12 +103,13 @@ hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
     anglePermutations, speakerCombinations] = ...
     testSignalGenerator(TestSignalParameters, hrtf);
 
-%%
+%% subset of only every second speakerCombination
 inputMixedSignal = inputMixedSignal(1:2:end,:);
 inputTargetSignal = inputTargetSignal(1:2:end,:);
 inputInterfSignal = inputInterfSignal(1:2:end,:);
 inputMixedSignal_H = inputMixedSignal_H(1:2:end,:);
 speakerCombinations = speakerCombinations(1:2:end,:);
+
 %%
 
 % resample signals to algorithm sampling rate
@@ -164,7 +165,7 @@ for iSp = 1:nSpeakerCombos
 end
 
 
-%% Evaluation using SimulationData
+%% Evaluation using SimulationData (separated for memory reasons)
 
 maskAppliedTarget = cell(nSpeakerCombos, nAnglePerms);
 maskAppliedInterf = cell(nSpeakerCombos, nAnglePerms);
@@ -183,13 +184,6 @@ for iSp = 1:nSpeakerCombos
 
         [maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}] = ...
             extractAppliedMask(SimulationData{iSp,jAn}, nBands);
-
-        if Plotting
-            plotIbmGlimpses(maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
-                ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn}, inputTargetSignal{iSp,jAn}, ...
-                inputInterfSignal{iSp,jAn}, SimulationData{iSp,jAn}, timeVec, ...
-                AlgorithmParameters.Gammatone.samplingRateHz);
-        end
 
         % compute separate enhanced signals for SNR improvement calculation
         [outputTargetSignal_S{iSp,jAn}, outputInterfSignal_S{iSp,jAn}] = ...
@@ -287,7 +281,14 @@ for iSp = 1:nSpeakerCombos
         [precision{iSp,jAn}, recall{iSp,jAn}] = compareToIbm(...
             maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
             ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn});
-        
+
+        if Plotting
+            plotIbmGlimpses(maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
+                ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn}, inputTargetSignal{iSp,jAn}, ...
+                inputInterfSignal{iSp,jAn}, SimulationData{iSp,jAn}, timeVec, ...
+                AlgorithmParameters.Gammatone.samplingRateHz);
+        end
+
         % compute separate enhanced signals for SNR improvement calculation
         [outputTargetSignal_H{iSp,jAn}, outputInterfSignal_H{iSp,jAn}] = ...
             hagermanMethod('pre-calc', anglePermutations(jAn,1), ...
