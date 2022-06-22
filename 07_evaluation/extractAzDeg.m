@@ -1,3 +1,4 @@
+% reshape azimuth estimate values into a matrix for easier data handling
 function azDeg = extractAzDeg(ivsMask, azimuthDegCells, AlgorithmParameters, nBands)
 
     azDeg = zeros(nBands,length(ivsMask{1}));

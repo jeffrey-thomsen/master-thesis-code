@@ -1,6 +1,8 @@
+% compute precision and recall rates for DAGA paper
 function [precision, recall] = glimpseDistanceMetric(AlgorithmParameters, ...
     dataMixed, dataTarget, dataInterf, centerFreqsHz, mixedSignal)
-%% definitive glimpse distance metric
+
+
 nBands = AlgorithmParameters.Gammatone.nBands;
 
 metricTargetL = plotDistanceMetric(dataMixed.targetSampleIndices.L,dataTarget.targetSampleIndices.L,...

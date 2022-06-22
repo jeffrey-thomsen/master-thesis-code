@@ -1,3 +1,5 @@
+% plot histograms and heat maps for showcasing target and interferer
+% precision and recall rates
 function [] = plotDOAHistHeat(precisionTarget, precisionInterf, recallTarget, recallInterf)
     
     figure('Position',[10 10 2.65*576 2.3*432]);

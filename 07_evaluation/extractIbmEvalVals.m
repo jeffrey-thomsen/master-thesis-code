@@ -1,3 +1,4 @@
+% reshape target and recall rates into matrices for easier data handling
 function [precisionTarget, precisionInterf, recallTarget, recallInterf, ...
     F1Target, F1Interf] = extractIbmEvalVals(varargin)
 

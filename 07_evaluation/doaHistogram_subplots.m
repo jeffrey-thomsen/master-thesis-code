@@ -1,3 +1,4 @@
+% script for generating the DOA histogram subplots per DOA angle combination
 figure;
 iPlot = 0;
 

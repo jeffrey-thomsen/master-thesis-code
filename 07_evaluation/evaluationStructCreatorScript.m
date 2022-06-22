@@ -1,4 +1,4 @@
-% for creating a subset of data that can be compared to the control angles
+% create a subset of data from the main set that can be compared to the control set
 % [90 0 -30]
 a.AlgorithmParameters = AlgorithmParameters;
 a.anglePermutations = anglePermutations(controlAngles,:);

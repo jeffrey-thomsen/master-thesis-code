@@ -1,7 +1,7 @@
+% script for generating MA plots
 clear
+
 %% Fetch DOA Data
-
-
 
 %% DOA histograms general
 % tic
@@ -228,7 +228,7 @@ centerFreqsHz = [73.2236407563322	107.651956490872	...
     6681.98086522375];
 
 
-% deltaSnr_TF = TF_SNR_improvement(inputTargetSignal{1}, inputInterfSignal{1}, ...
+% deltaTir_TF = TF_TIR_improvement(inputTargetSignal{1}, inputInterfSignal{1}, ...
 %   outputTargetSignal_H{1}, outputInterfSignal_H{1}, AlgorithmStates, samplingRateHz, centerFreqsHz);
 % figure;
 % plotMonoSpectrogram(inputMixedSignal{1}, samplingRateHz, round(0.023 * samplingRateHz))

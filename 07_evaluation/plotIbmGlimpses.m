@@ -1,3 +1,5 @@
+% plot time-frequency representation of correct and incorrect target and
+% interferer glimpses by comparing them to IBM
 function [] = plotIbmGlimpses(maskTarget, maskInterf, ibmTarget, ibmInterf, ...
   targetSignal, interfSignal, SimulationData, timeVec, samplingRateHz)    
 

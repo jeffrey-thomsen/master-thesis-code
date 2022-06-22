@@ -1,3 +1,5 @@
+% script used to join simulation data that had to be separated during
+% simulation for memory reasons
 tic
 
 load('2022-05-31_10-36_simulation_data.mat');

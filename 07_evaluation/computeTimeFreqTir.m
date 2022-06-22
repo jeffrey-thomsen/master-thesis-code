@@ -1,3 +1,6 @@
+% compute TIR in time-frequency blocks for generation of an IBM
+% target and interferer subband signals are grouped into time-frequency
+% blocks and the TIR is computed for each block
 function TIR = computeTimeFreqTir(targetSubbandSignals, interfSubbandSignals, ...
   samplingRateHz, nBands)
 
