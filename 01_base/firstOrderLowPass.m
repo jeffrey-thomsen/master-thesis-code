@@ -25,7 +25,7 @@ function [outputSignal, filterState] = firstOrderLowPass(inputSignal, ...
     if ~isempty(varargin)
         tau = varargin{1};
     else
-        tau = AlgorithmParameters.snrLPFilterTau;
+        tau = AlgorithmParameters.cfrLPFilterTau;
     end
     fs = AlgorithmParameters.Gammatone.samplingRateHz;
     T = 1/fs;

@@ -16,18 +16,17 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
     AlgorithmParameters.lookuptableType = 'itd'; % 'ipd' or 'itd' to azimuth mapping
 
     AlgorithmParameters.p0SearchRangeHz = [100 350]; % Bruemann2018 100 500
-    AlgorithmParameters.snrLPFilterTau = 0.04; % Bruemann2018
+    AlgorithmParameters.cfrLPFilterTau = 0.04; % Bruemann2018
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
     AlgorithmParameters.nCyclesTau = 5; % Dietz2011
-    AlgorithmParameters.snrThresholdInDb = 10; % Bruemann2018 0 dB
+    AlgorithmParameters.cfr0ThresholdInDb = 10; % Bruemann2018 0 dB
     
     AlgorithmParameters.targetRangeDeg = [-5 5]; % initialized at 0°
 
     AlgorithmParameters.ChenP0Detection = false;
     AlgorithmParameters.coherenceMask = true;
     AlgorithmParameters.azimuthPooling = false;
-    AlgorithmParameters.snrCondition = true;
-    AlgorithmParameters.bruemannSnrCondition = false;
+    AlgorithmParameters.cfr0mask = true;
     AlgorithmParameters.DOAProcessing = true;
     AlgorithmParameters.bruemannSimpleDOA = false;
     AlgorithmParameters.Cancellation = true;

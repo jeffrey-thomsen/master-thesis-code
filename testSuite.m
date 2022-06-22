@@ -445,7 +445,7 @@ end
 % Periodicity Analysis
 function testPeriodicityAnalysisExpectedSizes(testCase)
 % test if the periodicityAnalysis function returns p0 candidate index
-% values in the expected range and if the Sigma, Delta and SNR vectors all
+% values in the expected range and if the Sigma, Delta and CFR vectors all
 % have the expected length
 
     % Setup
@@ -464,7 +464,7 @@ function testPeriodicityAnalysisExpectedSizes(testCase)
         subbandDecompositionBinaural(inputSignal, AlgorithmStates);
 
     % Exercise
-    [sigma, delta, snr, p0CandidateSampleIndexVectors, ~, ...
+    [sigma, delta, cfr, p0CandidateSampleIndexVectors, ~, ...
         p0SearchRangeSamplesVector] = periodicityAnalysis(...
         subbandSignalArray, AlgorithmParameters, AlgorithmStates);
 
@@ -478,13 +478,13 @@ function testPeriodicityAnalysisExpectedSizes(testCase)
         verifyLessThanOrEqual(testCase,p0CandidateSampleIndexVectors.R{iBand},...
             nP0Values)
         
-        verifyEqual(testCase,length(snr.L{iBand}),...
+        verifyEqual(testCase,length(cfr.L{iBand}),...
             length(find(p0CandidateSampleIndexVectors.L{iBand})))
         verifyEqual(testCase,length(sigma.L{iBand}),...
             length(find(p0CandidateSampleIndexVectors.L{iBand})))
         verifyEqual(testCase,length(delta.L{iBand}),...
             length(find(p0CandidateSampleIndexVectors.L{iBand})))
-        verifyEqual(testCase,length(snr.R{iBand}),...
+        verifyEqual(testCase,length(cfr.R{iBand}),...
             length(find(p0CandidateSampleIndexVectors.R{iBand})))
         verifyEqual(testCase,length(sigma.R{iBand}),...
             length(find(p0CandidateSampleIndexVectors.R{iBand})))
@@ -758,8 +758,8 @@ function testFirstOrderLowpassFilterStateRelay(testCase)
     verifyEqual(testCase,blockOutputSignal,batchOutputSignal)
 end
 
-function testCalcSNRBinauralSizes(testCase)
-% test if a binaural set of input signals in the calcSNRBinaural funtion
+function testCalcCFRBinauralSizes(testCase)
+% test if a binaural set of input signals in the calcCFRBinaural funtion
 % generates output structures of the same size
 
     % Setup 
@@ -769,16 +769,16 @@ function testCalcSNRBinauralSizes(testCase)
     delta.R = testSignalGenerator;
 
     % Exercise
-    snr = calcSNRBinaural(sigma, delta);
+    cfr = calcCFRBinaural(sigma, delta);
 
     % Verify
     expectedSize = size(sigma.L);
-    verifySize(testCase,snr.L,expectedSize)
-    verifySize(testCase,snr.R,expectedSize)
+    verifySize(testCase,cfr.L,expectedSize)
+    verifySize(testCase,cfr.R,expectedSize)
 end
 
-function testCalcSNRBinauralExpectedValue(testCase)
-% test if a binaural set of input signals in the calcSNRBinaural funtion
+function testCalcCFRBinauralExpectedValue(testCase)
+% test if a binaural set of input signals in the calcCFRBinaural funtion
 % generates output of correct value
 
     % Setup 
@@ -791,16 +791,16 @@ function testCalcSNRBinauralExpectedValue(testCase)
     delta.R = deltaVal*ones(100,1);
 
     % Exercise
-    snr = calcSNRBinaural(sigma, delta);
+    cfr = calcCFRBinaural(sigma, delta);
 
     % Verify
     expectedValue = (sigmaVal/deltaVal)*ones(100,1);
-    verifyEqual(testCase, snr.L, expectedValue, "AbsTol", 1e-15)
-    verifyEqual(testCase, snr.R, expectedValue, "AbsTol",1e-15)
+    verifyEqual(testCase, cfr.L, expectedValue, "AbsTol", 1e-15)
+    verifyEqual(testCase, cfr.R, expectedValue, "AbsTol",1e-15)
 end
 
-function testSubbandSnrPeakDetectionBinauralSizes(testCase)
-% test if the subbandSnrPeakDetectionBinaural function returns arrays of
+function testSubbandCfrPeakDetectionBinauralSizes(testCase)
+% test if the subbandCfrPeakDetectionBinaural function returns arrays of
 % the expected dimension and if they only contain values less or equal to
 % the maximum p0 value in samples
 
@@ -809,19 +809,19 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
     nP0Values = 50;
     for iP0Value = 1:nP0Values
         testSignal = testSignalGenerator;
-        snr.L(:,iP0Value) = testSignal(:,1);
+        cfr.L(:,iP0Value) = testSignal(:,1);
         testSignal = testSignalGenerator;
-        snr.R(:,iP0Value) = testSignal(:,2);
+        cfr.R(:,iP0Value) = testSignal(:,2);
     end
 
-    AlgorithmParameters.snrCondition = false;
+    AlgorithmParameters.cfr0mask = false;
     AlgorithmParameters.RandomP0 = false;
 
     % Exercise
-    p0Candidates = subbandSnrPeakDetectionBinaural(snr, AlgorithmParameters);
+    p0Candidates = subbandCfrPeakDetectionBinaural(cfr, AlgorithmParameters);
 
     % Validate
-    expectedSize = [size(snr.L,1), 1];
+    expectedSize = [size(cfr.L,1), 1];
     verifySize(testCase, p0Candidates.L, expectedSize)
     verifySize(testCase, p0Candidates.R, expectedSize)
 
@@ -829,28 +829,28 @@ function testSubbandSnrPeakDetectionBinauralSizes(testCase)
     verifyLessThanOrEqual(testCase, p0Candidates.R, nP0Values)
 end
 
-function testSubbandSnrPeakDetectionBinauralValues(testCase)
-% test if the subbandSnrPeakDetectionBinaural function returns the expected
+function testSubbandCfrPeakDetectionBinauralValues(testCase)
+% test if the subbandCfrPeakDetectionBinaural function returns the expected
 % values, i.e. the indices of the maximum values along the correct axis
 
     % Setup
     nSamples = 30;
     for iSample = 1:nSamples
-        snr.L(iSample,:) = sin(pi/100:pi/100:10*pi);
-        snr.R(iSample,:) = (linspace(0,1,1000)).*sin(pi/100:pi/100:10*pi);
+        cfr.L(iSample,:) = sin(pi/100:pi/100:10*pi);
+        cfr.R(iSample,:) = (linspace(0,1,1000)).*sin(pi/100:pi/100:10*pi);
     end
 
-    AlgorithmParameters.snrCondition = false;
+    AlgorithmParameters.cfr0mask = false;
     AlgorithmParameters.RandomP0 = false;
 
     % Exercise
-    p0Candidates = subbandSnrPeakDetectionBinaural(snr, AlgorithmParameters);
+    p0Candidates = subbandCfrPeakDetectionBinaural(cfr, AlgorithmParameters);
 
     % Validate
 %     expectedP0Candidates.L = 50*ones(nSamples,1);
 %     expectedP0Candidates.L = 851*ones(nSamples,1);
-    [~, maxIndices.L] = max(snr.L, [], 2);
-    [~, maxIndices.R] = max(snr.R, [], 2);
+    [~, maxIndices.L] = max(cfr.L, [], 2);
+    [~, maxIndices.R] = max(cfr.R, [], 2);
 
     verifyEqual(testCase, p0Candidates.L, maxIndices.L)
     verifyEqual(testCase, p0Candidates.R, maxIndices.R)
@@ -1091,7 +1091,7 @@ function testHarmonicEnhancement(testCase)
 %     [subbandSignalArray.L, targetSampleIndices.L{iBand}, ...
 %         interfererSampleIndices.L{iBand}] = harmonicEnhancement(...
 %         subbandSignalArray.L, iBand, ivsMask, ...
-%         p0DetectedIndexVectors.L, azimuthDegCells, snrDesired.L, ...
+%         p0DetectedIndexVectors.L, azimuthDegCells, cfrDesired.L, ...
 %         sigmaDesired.L, deltaDesired.L, AlgorithmParameters);
 end
 
@@ -1115,7 +1115,7 @@ function testTargetAngleChange(testCase)
     % set up algorithm parameters
     AlgorithmParameters = AlgorithmParametersConstructor();
     AlgorithmParameters.coherenceMask    = false;
-    AlgorithmParameters.snrThresholdInDb = -100;
+    AlgorithmParameters.cfr0ThresholdInDb = -100;
     load('2022-05-11_itd_lookuptable_annotated.mat');
     lookuptable = lookuptable.lookuptable;
     AlgorithmParameters.lookuptable = lookuptable;

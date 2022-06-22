@@ -10,8 +10,8 @@
 % periodic samples within each subband signal and their respective detected
 % period
 % azimuthDegCells -  cells containing DOA estimate values for each subband
-% snrDesired, sigmaDesired, deltaDesired - cells containing SNR, Sigma and
-% Delta and SNR values of detected periodic subband samples
+% cfrDesired, sigmaDesired, deltaDesired - cells containing CFR, Sigma and
+% Delta values of detected periodic subband samples
 % AlgorithmParameters - struct containing parametric information for the
 % simulation
 %
@@ -25,7 +25,7 @@
 % harmonic enhancement
 function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
   harmonicEnhancement(subbandSignal, iBand, ivsMask, ...
-  p0DetectedIndexVectors, azimuthDegCells, snrDesired, sigmaDesired, ...
+  p0DetectedIndexVectors, azimuthDegCells, cfrDesired, sigmaDesired, ...
   deltaDesired, AlgorithmParameters)
 
     %% remove all samples (respective azimuth estimates) for which no 
@@ -81,39 +81,23 @@ function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
         ismember(periodicSampleIndices, targetSampleIndices);
     interfererConditionLogicalVectorRePeriodicSamples = ...
         ismember(periodicSampleIndices, interfererSampleIndices);
-
-    if AlgorithmParameters.bruemannSnrCondition
-        % apply SNR condition according to Bruemann, applying a periodicity
-        % threshold for cancellation but not enhancement
-        assert(~AlgorithmParameters.snrCondition, 'Double SNR conditions (global and Bruemann) not allowed. Choose one!')
-        snrConditionLogicalVectorRePeriodicSamples = ...
-            snrDesired{iBand}>1;
-        snrConditionPeriodicSampleIndices = ...
-            periodicSampleIndices(snrConditionLogicalVectorRePeriodicSamples(1:numel(periodicSampleIndices)));
-        
-        interfererConditionLogicalVectorRePeriodicSamples = ...
-            interfererConditionLogicalVectorRePeriodicSamples ...
-            & snrConditionLogicalVectorRePeriodicSamples(1:numel(periodicSampleIndices))';
-        interfererSampleIndices = ...
-            interfererSampleIndices(ismember(interfererSampleIndices, snrConditionPeriodicSampleIndices));
-    end
-
     
     if ~AlgorithmParameters.DOAProcessing
-        % control condition: apply cancellation to all detected periodic
+        % control condition: apply enhancement to all detected periodic
         % samples, regardless of coherence or angle of incidence
-        interfererSampleIndices = periodicSampleIndices;
-        interfererConditionLogicalVectorRePeriodicSamples = ...
-            ismember(periodicSampleIndices, interfererSampleIndices);
-        targetSampleIndices = [];
-        targetConditionLogicalVectorRePeriodicSamples = [];
-        
-        % control condition: apply enhancement
         targetSampleIndices = periodicSampleIndices;
         targetConditionLogicalVectorRePeriodicSamples = ...
             ismember(periodicSampleIndices, targetSampleIndices);
         interfererSampleIndices = [];
         interfererConditionLogicalVectorRePeriodicSamples = [];
+
+        % other control conditon: apply cancellation
+%         interfererSampleIndices = periodicSampleIndices;
+%         interfererConditionLogicalVectorRePeriodicSamples = ...
+%             ismember(periodicSampleIndices, interfererSampleIndices);
+%         targetSampleIndices = [];
+%         targetConditionLogicalVectorRePeriodicSamples = [];
+       
     end
 
     %% replace periodic samples from target and interferer angles with

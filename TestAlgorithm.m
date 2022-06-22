@@ -4,7 +4,7 @@ classdef TestAlgorithm < matlab.unittest.TestCase
         ChenP0Detection = {true, false};
         coherenceMask   = {true, false};
         azimuthPooling  = {true, false};
-        snrCondition    = {true, false};
+        cfr0mask        = {true, false};
         DOAProcessing   = {true, false};
         Cancellation    = {true, false};
         Enhancement     = {true, false};
@@ -12,7 +12,7 @@ classdef TestAlgorithm < matlab.unittest.TestCase
 
     methods (Test)
         function testCancellation(testCase, ChenP0Detection, ...
-          coherenceMask, azimuthPooling, snrCondition, ...
+          coherenceMask, azimuthPooling, cfr0mask, ...
           DOAProcessing, Cancellation, Enhancement)
         % test if the speech enhancement algorithm will run with all
         % combinations of processing parameters
@@ -23,7 +23,7 @@ classdef TestAlgorithm < matlab.unittest.TestCase
             AlgorithmParameters.ChenP0Detection = ChenP0Detection;
             AlgorithmParameters.coherenceMask   = coherenceMask;
             AlgorithmParameters.azimuthPooling  = azimuthPooling;
-            AlgorithmParameters.snrCondition    = snrCondition;
+            AlgorithmParameters.cfr0mask        = cfr0mask;
             AlgorithmParameters.DOAProcessing   = DOAProcessing;
             AlgorithmParameters.Cancellation    = Cancellation;
             AlgorithmParameters.Enhancement     = Enhancement;

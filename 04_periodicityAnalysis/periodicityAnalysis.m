@@ -1,6 +1,6 @@
 % Periodicity analysis stage of the Thomsen2022 speech enhancement
 % algorithm. Uses a set of binaural signals that has been decomposed by a
-% gammatone filterbank and returns Sigma, Delta and SNR values for each
+% gammatone filterbank and returns Sigma, Delta and CFR values for each
 % subband sample at which a periodic component was detected. The frequency
 % range for the periodicity analysis is defined in p0SearchRange
 %
@@ -15,8 +15,8 @@
 % need to be handed over to the next signal block/sample to be processed
 %
 % Output:
-% sigmaCells, deltaCells, snrCells - cells of size M containing Sigma, 
-% Delta and SNR values for each detected periodic sample in each subband
+% sigmaCells, deltaCells, cfrCells - cells of size M containing Sigma, 
+% Delta and CFR values for each detected periodic sample in each subband
 % p0CandidateSampleIndexVectorCells - cells of size M specifying at the
 % positions of detected periodic samples within each subband signal block
 % the index pointing to the detected period
@@ -24,7 +24,7 @@
 % p0SearchRangeSamplesVector - range vector for mapping the indices in
 % p0CandidateSampleIndexVectorCells to the actual number of samples that
 % the detected period corresponds to
-function [sigmaCells, deltaCells, snrCells, ...
+function [sigmaCells, deltaCells, cfrCells, ...
   p0CandidateSampleIndexVectorCells, AlgorithmStates, ...
   p0SearchRangeSamplesVector] = periodicityAnalysis(subbandSignalArray, ...
   AlgorithmParameters, AlgorithmStates)
@@ -50,8 +50,8 @@ function [sigmaCells, deltaCells, snrCells, ...
     sigmaCells.R = cell(1,nBands);
     deltaCells.L = cell(1,nBands);
     deltaCells.R = cell(1,nBands);
-    snrCells.L = cell(1,nBands);
-    snrCells.R = cell(1,nBands);
+    cfrCells.L = cell(1,nBands);
+    cfrCells.R = cell(1,nBands);
 
     for iBand = 1:nBands
         subbandSignal.L = subbandSignalArray.L(:,iBand);
@@ -80,38 +80,28 @@ function [sigmaCells, deltaCells, snrCells, ...
             calcSigmaDeltaBinaural(normalizedSubbandSignal, ...
             p0SearchRangeSamplesVector, States, 'range');
         
-        % pre-process normalized sigmas and deltas for SNR computation
+        % pre-process normalized sigmas and deltas for CFR computation
         [normalizedSigma, normalizedDelta, States] = ...
             absoluteSquareLPFilterBinaural(normalizedSigma, ...
             normalizedDelta, AlgorithmParameters, States);
         
-        % compute normalized SNR for every p0 in search range
-        normalizedSnr = calcSNRBinaural(normalizedSigma, normalizedDelta);
+        % compute normalized CFR for every p0 in search range
+        cfrNorm = calcCFRBinaural(normalizedSigma, normalizedDelta);
         
-        % intra-subband SNR peak detection: find p0 candidate for each
+        % intra-subband CFR peak detection: find p0 candidate for each
         % signal sample
         p0CandidateSampleIndexVector = ...
-            subbandSnrPeakDetectionBinaural(normalizedSnr, ...
+            subbandCfrPeakDetectionBinaural(cfrNorm, ...
             AlgorithmParameters);
 
-        % calculate Sigmas, Deltas and SNR for p0 candidates from subband
+        % calculate Sigmas, Deltas and CFR for p0 candidates from subband
         % signal
         [p0CandidateSigma, p0CandidateDelta, States] = ...
             calcSigmaDeltaBinaural(subbandSignal, ...
             p0SearchRangeSamplesVector, States, 'discrete', ...
             p0CandidateSampleIndexVector);
         
-%         interimp0S.L = sign(p0CandidateSigma.L);
-%         interimp0S.R = sign(p0CandidateSigma.R);
-%         interimp0D.L = sign(p0CandidateDelta.L);
-%         interimp0D.R = sign(p0CandidateDelta.R);
-%         nSL = normalizedSnr.L(p0CandidateSampleIndexVector.L>0,:);
-%         pSIVL = p0CandidateSampleIndexVector.L(p0CandidateSampleIndexVector.L>0);
-%         for k=1:numel(pSIVL); p0CandidateSnr.L(k) = nSL(k,pSIVL(k)); end;
-%         nSR = normalizedSnr.R(p0CandidateSampleIndexVector.R>0,:);
-%         pSIVR = p0CandidateSampleIndexVector.R(p0CandidateSampleIndexVector.R>0);
-%         for k=1:numel(pSIVR); p0CandidateSnr.R(k) = nSR(k,pSIVR(k)); end;
-        p0CandidateSnr = calcSNRBinaural(p0CandidateSigma, p0CandidateDelta);
+        p0CandidateCfr = calcCFRBinaural(p0CandidateSigma, p0CandidateDelta);
 
         % write states back into global structs
         AlgorithmStates.L.ProcessingStates{iBand} = States.L;
@@ -127,8 +117,8 @@ function [sigmaCells, deltaCells, snrCells, ...
         sigmaCells.R{iBand} = p0CandidateSigma.R;
         deltaCells.L{iBand} = p0CandidateDelta.L;
         deltaCells.R{iBand} = p0CandidateDelta.R;
-        snrCells.L{iBand} = p0CandidateSnr.L;
-        snrCells.R{iBand} = p0CandidateSnr.R;
+        cfrCells.L{iBand} = p0CandidateCfr.L;
+        cfrCells.R{iBand} = p0CandidateCfr.R;
 
     end
 
