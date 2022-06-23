@@ -15,7 +15,7 @@ function AlgorithmParameters = AlgorithmParametersConstructor()
 
     AlgorithmParameters.lookuptableType = 'itd'; % 'ipd' or 'itd' to azimuth mapping
 
-    AlgorithmParameters.p0SearchRangeHz = [100 350]; % Bruemann2018 100 500
+    AlgorithmParameters.p0SearchRangeHz = [100 350]; % Bruemann2018 [100 500]
     AlgorithmParameters.cfrLPFilterTau = 0.04; % Bruemann2018
     AlgorithmParameters.ivsThreshold = 0.98; % Dietz2011
     AlgorithmParameters.nCyclesTau = 5; % Dietz2011

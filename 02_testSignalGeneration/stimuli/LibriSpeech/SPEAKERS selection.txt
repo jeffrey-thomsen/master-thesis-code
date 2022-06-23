@@ -1,0 +1,34 @@
+; Some pipe(|) separated metadata about all LibriVox readers, whose work was used
+; in the corpus.
+;
+; The meaning of the fields in left-to-right order is as follows:
+;
+; reader_id: the ID of the reader in the LibriVox's database
+; gender: 'F' for female, 'M' for male
+; subset: the corpus subset to which the reader's audio is assigned
+; duration: total number of minutes of speech by the reader, included in the corpus
+; name: the name under which the reader is registered in LibriVox
+;
+;ID  |SEX| SUBSET           |MINUTES| NAME
+251  | M | dev-clean        | 8.04  | Mark Nelson
+652  | M | dev-clean        | 8.31  | Scott Walter
+1462 | F | dev-clean        | 8.04  | E. Tavano
+2035 | F | dev-clean        | 8.11  | Sharon Bautista
+2277 | F | dev-clean        | 8.01  | zinniz
+3575 | F | test-clean       | 8.06  | supergirl
+5694 | M | dev-clean        | 8.01  | Winston Tharp
+7176 | M | test-clean       | 8.06  | KalenXI
+7729 | M | test-clean       | 8.17  | Tim Bower
+7976 | M | dev-clean        | 8.13  | JenniferRutters (assumed F, false labeling?)
+
+Original filenames:
+"251-136532-0020.flac"
+"652-130726-0030.flac"
+"1462-170145-0014.flac"
+"2035-147961-0034.flac"
+"2277-149874-0021.flac"
+"3575-170457-0001.flac"
+"5694-64029-0015.flac"
+"7176-92135-0037.flac"
+"7729-102255-0034.flac"
+"7976-110124-0019.flac"

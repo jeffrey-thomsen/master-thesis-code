@@ -9,10 +9,6 @@ end
 
 %% Test functions
 
-% function testMainScript(testCase)
-%     thomsen2022_main;
-% end
-
 % testSignalGenerator.m
 function testDefaultTestSignalGeneratorSignalOutputLength(testCase)
 % test if testSignalGenerator.m returns a signal of the expected size as
@@ -995,64 +991,6 @@ function testDisambiguateIpdInactive(testCase)
 
 end
 
-function testCalcIvs(testCase)
-
-% test if the IVS mask calculation returns a sufficiently low count of
-% samples passed for incoherent signals and sufficiently high for coherent
-% signals
-
-% % non-coherent noise
-% binauralSignal(:,1) = randn(10000,1) + 1i*randn(10000,1);
-% binauralSignal(:,2) = randn(10000,1) + 1i*randn(10000,1);
-% verifyLessThan(testCase, ratio, 0.0005)
-% % coherent noise 0°
-% signal = randn(10000,1) + 1i*randn(10000,1);
-% hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-% binauralSignal = SOFAspat(signal, hrtf, 0, 0);
-% verifyGreaterThan(testCase, ratio, 0.82)
-% % coherent noise -60°
-% signal = randn(10000,1) + 1i*randn(10000,1);
-% hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-% binauralSignal = SOFAspat(signal, hrtf, -60, 0);
-% verifyGreaterThan(testCase, ratio, 0.82)
-% 
-% % non-coherent speech
-% signal = audioread('p298_097.wav');
-% binauralSignal(:,1) = SOFAspat(signal, hrtf, 40, 0);
-% binauralSignal(:,2) = SOFAspat(signal, hrtf, -60, 0);
-% verifyLessThan(testCase, ratio, 0.0005)
-% % coherent speech 0°
-% signal = audioread('p298_097.wav');
-% hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-% binauralSignal = SOFAspat(signal, hrtf, 0, 0);
-% verifyGreaterThan(testCase, ratio, 0.0005)
-% % coherent speech -60°
-% signal = audioread('p298_097.wav');
-% hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-% binauralSignal = SOFAspat(signal, hrtf, -60, 0);
-% verifyGreaterThan(testCase, ratio, 0.0005)
-% 
-%     % Setup
-%     ratio=zeros(10000,1);
-%     for i=1:10000
-%     signal = randn(10000,1)+1i*randn(10000,1);
-% %     signal = audioread('p298_097.wav');
-% %     hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
-%     binauralSignal = SOFAspat(signal, hrtf, -60, 0);
-%     itf = binauralSignal(:,1) .* conj(binauralSignal(:,2));
-% 
-% %     States = AlgorithmStatesConstructor(AlgorithmParametersConstructor());
-% %     States = States.Binaural.ProcessingStates{1};
-% 
-%     % Exercise
-%     ivs = calcIvs(itf, 0.04, 44100, 0.98, States);
-% 
-%     % Verify
-%     ratio(i) = nnz(ivs)/numel(ivs);
-%     end
-%     verifyGreaterThan(testCase, ratio, 0.6)
-end
-
 function testCalcIvsFilterStateRelay(testCase)
 % test if block-wise calculation of the IVS mask results output as batch 
 % processing the entire signal, thus testing the function of
@@ -1077,22 +1015,6 @@ function testCalcIvsFilterStateRelay(testCase)
 
     % Verify
     verifyEqual(testCase, ivsMaskBlock, ivsMaskBatch)
-end
-
-% Azimuth estimation
-function testAzimuthEstimation(testCase)
-end
-
-function testInterauralToAzimuthMapping(testCase)
-end
-
-% Harmonic enhancement
-function testHarmonicEnhancement(testCase)
-%     [subbandSignalArray.L, targetSampleIndices.L{iBand}, ...
-%         interfererSampleIndices.L{iBand}] = harmonicEnhancement(...
-%         subbandSignalArray.L, iBand, ivsMask, ...
-%         p0DetectedIndexVectors.L, azimuthDegCells, cfrDesired.L, ...
-%         sigmaDesired.L, deltaDesired.L, AlgorithmParameters);
 end
 
 function testTargetAngleChange(testCase)
@@ -1145,6 +1067,7 @@ function testTargetAngleChange(testCase)
                             sum(abs(rightOutput(:,2))).^2)
 
 end
+
 %% Full Speech enhancement algorithm
 function testSpeechEnhancementInBlockFeederCompare(testCase)
 % test if speech enhancement returns identical output signal and filter
@@ -1205,7 +1128,7 @@ end
 function testSpeechEnhancementCompareScaledSignals(testCase)
 % test if a linearly scaled version of the input signal yields the same
 % simulation data in terms of detected periodicity and DOA, and if the
-% enhanced signal
+% enhanced signals are identical except for the scaling factor
 
     % Setup
     AlgorithmParameters = AlgorithmParametersConstructor();
@@ -1246,6 +1169,7 @@ function testSpeechEnhancementCompareScaledSignals(testCase)
 %     verifyEqual(testCase, simulationData.itdSecCells, simulationScaledData.itdSecCells, "RelTol", 1e-11)
 %     verifyEqual(testCase, simulationData.itdDisambiguatedLogicalCells, simulationScaledData.itdDisambiguatedLogicalCells, "RelTol", 1e-11)
 end
+
 %% LP filter testing
 function testFirstOrderLPFilterAgainstFilter(testCase)
 % verify that the firstOrderLPFilter.m function functions equally to the

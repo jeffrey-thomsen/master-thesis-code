@@ -1,5 +1,5 @@
-% This is the MATLAB code for the master thesis "Speech enhacment for
-% hearing aids using a combination of binaural and periodicity features" by
+% This is the MATLAB code for the master thesis "Speech Enhancement for
+% Hearing Aids Using a Combination of Binaural and Periodicity Features" by
 % Jeffrey Thomsen, written at the CvO University of Oldenburg, Germany, in
 % 2022.
 % This is the main script, the running of which will allow you to define
@@ -7,7 +7,13 @@
 % The simulation is executed and the data and
 % evaluation results are displayed and stored accordingly.
 
+% Notes: 
+% You need to add this folder and all its subfolders to the search path.
+% You need to have the MATLAP SOFA API installed.
+
 %% Preparation
+
+%% Set parameters
 
 clear
 
@@ -15,10 +21,21 @@ startTime = tic;
 
 Publication = 'DEMO'; % 'DAGA', 'MA', 'DEMO'
 
-% Evaluation flags
-Plotting = false;
-Play = false;
+% Test signal parameters
+if strcmp(Publication,'DEMO')
+    TestSignalParameters.testSignalType = 'DEMO';
+    % choose from "0251M", "0652M", "1462F", "2035F", "2277F", 
+    %             "3575F", "5694M", "7176M", "7729M", "7976F"
+    TestSignalParameters.speakerIds = ["0251M", "7976F"];
+    % choose between -90 and 90
+    TestSignalParameters.targetAngles = [-30, 30];
+end
 
+% Evaluation flags
+Play = true;
+Plotting = false;
+
+% Algorithm parameters
 % Initialize algorithm parameter and filter state structs
 AlgorithmParameters = AlgorithmParametersConstructor();
 
@@ -27,36 +44,50 @@ AlgorithmParameters = AlgorithmParametersConstructor();
 AlgorithmParameters.cfr0mask = false;
 AlgorithmParameters.coherenceMask = false;
 
-% to evaluate how much performance cancellation adds
+% to evaluate enhancement vs. cancellation
 AlgorithmParameters.Cancellation = true;
-AlgorithmParameters.Enhancement = false;
+AlgorithmParameters.Enhancement = true;
+
+% additional parameters
+AlgorithmParameters.DOAProcessing = true;
 AlgorithmParameters.RandomP0 = false;
+AlgorithmParameters.bruemannSimpleDOA = false;
 
 % ideas for dealing with fc>1.4kHz
 AlgorithmParameters.ChenP0Detection = false;
 AlgorithmParameters.azimuthPooling = false;
 
-% additional parameters
-AlgorithmParameters.DOAProcessing = true;
-AlgorithmParameters.bruemannSimpleDOA = false;
 
-% Generate/load ITD/IPD-to-azimuth mapping function lookup table
+
+
+
+
+
+%% Generate/load ITD-to-azimuth mapping function lookup table
 tic
+
 switch Publication
+    case 'DEMO'
+load('2022-05-26_itd_lookuptable_annotated.mat');
     case 'MA'
 load('2022-05-26_itd_lookuptable_annotated.mat');
     case 'DAGA'
 load('2022-03-04_itd_lookuptable_annotated.mat');
 end
+
 lookuptable = lookuptable.lookuptable;
 
+% generate new lookup table
 % hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
 % lookuptable = interauralToAzimuthLookuptable(hrtf, AlgorithmParameters,...
 %     "0251M.flac","0652M.flac","1462F.flac","2035F.flac","2277F.flac",...
 %     "3575F.flac","5694M.flac","7176M.flac","7729M.flac","7976F.flac");
 
 AlgorithmParameters.lookuptable = lookuptable;
+
 toc
+
+%% Set sampling rate and generate filterbank
 
 % set sampling frequency to at least 2x upper gammatone centre frequency
 samplingRateHz = ceil(2*AlgorithmParameters.Gammatone.fHigh);
@@ -68,8 +99,115 @@ AlgorithmParameters.Gammatone.samplingRateHz = samplingRateHz;
 
 centerFreqsHz = AlgorithmStates.L.GammatoneStates.analyzer.center_frequencies_hz;
 nBands = AlgorithmParameters.Gammatone.nBands;
+
+
+
+
+
+
+
 %%
 switch Publication
+    case 'DEMO'
+
+%% Generate test signal
+
+hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
+
+[inputMixedSignal, inputTargetSignal, inputInterfSignal, ...
+    hrtfSamplingRateHz, inputMixedSignal_Hagerman] = ...
+    testSignalGenerator(TestSignalParameters, hrtf);
+
+% adjust sampling rate to gammatone filterbank
+inputMixedSignal = resample(inputMixedSignal, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, hrtfSamplingRateHz);
+inputMixedSignal_Hagerman = resample(inputMixedSignal_Hagerman, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, hrtfSamplingRateHz);
+inputTargetSignal = resample(inputTargetSignal, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, hrtfSamplingRateHz);
+inputInterfSignal = resample(inputInterfSignal, ...
+    AlgorithmParameters.Gammatone.samplingRateHz, hrtfSamplingRateHz);
+
+% time vector for plotting
+dt = 1/AlgorithmParameters.Gammatone.samplingRateHz;
+timeVec = dt:dt:dt*length(inputMixedSignal);
+
+SimulationData.signalIndices = 1:length(inputMixedSignal);
+
+%% Run speech enhancement algorithm
+
+fprintf('\nProcessing test signal: target speaker %s at %i° DOA, interferer speaker %s at %i° DOA\n', ...
+    TestSignalParameters.speakerIds(1), TestSignalParameters.targetAngles(1), ...
+    TestSignalParameters.speakerIds(2), TestSignalParameters.targetAngles(2));
+
+tic
+AlgorithmParameters.targetRangeDeg = ...
+    TestSignalParameters.targetAngles(1) + [-5 5];
+
+[outputMixedSignal, ~, SimulationData.Data] = ...
+    speechEnhancement(inputMixedSignal, AlgorithmParameters, AlgorithmStates);
+toc
+
+%% Play signals
+
+if Play
+    box1 = msgbox('Play original signal (Ensure volume is adequately set)');
+    waitfor(box1);
+    soundsc(inputMixedSignal, samplingRateHz);
+    box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
+        ' section of script (adjusting filter variables if necessary)']);
+    waitfor(box2);
+    soundsc(outputMixedSignal, samplingRateHz);
+end
+
+
+%% Evaluate algorithm performance
+
+% extract masks of target and interferer glimpses
+[maskAppliedTarget, maskAppliedInterf] = ...
+    extractAppliedMask(SimulationData, nBands);
+
+% compute IBM
+[inputTargetSubbandSignals, ~] = subbandDecompositionBinaural(...
+    inputTargetSignal, AlgorithmStates);
+[inputInterfSubbandSignals, ~] = subbandDecompositionBinaural(...
+    inputInterfSignal, AlgorithmStates);
+        
+inputTir.L = computeTimeFreqTir(inputTargetSubbandSignals.L, ...
+    inputInterfSubbandSignals.L, samplingRateHz, nBands);
+inputTir.R = computeTimeFreqTir(inputTargetSubbandSignals.R, ...
+    inputInterfSubbandSignals.R, samplingRateHz, nBands);
+
+ibmTarget.L = inputTir.L >  0;
+ibmTarget.R = inputTir.R >  0;
+ibmInterf.L = inputTir.L <= 0;
+ibmInterf.R = inputTir.R <= 0;
+        
+% compare chosen glimpses to IBM
+[precision, recall] = compareToIbm(...
+    maskAppliedTarget, maskAppliedInterf, ...
+    ibmTarget, ibmInterf);
+
+% compute separate enhanced signals for TIR improvement calculation
+[outputTargetSignal_Hagerman, outputInterfSignal_Hagerman] = ...
+    hagermanMethod('pre-calc', TestSignalParameters.targetAngles(1), ...
+    AlgorithmParameters, AlgorithmStates, ...
+    outputMixedSignal, inputMixedSignal_Hagerman);
+
+% compute TIR improvement
+deltaTIR = computeTirImprovement(...
+    inputTargetSignal, inputInterfSignal, ...
+    outputTargetSignal_Hagerman, outputInterfSignal_Hagerman);
+
+fprintf('\nProcessed signal with \ntarget precision: %1.2f, target recall: %1.2f\ninterferer precision: %1.2f, interferer recall: %1.2f\nDelta TIR: %1.2f dB\n\n', ...
+    precision.Target, recall.Target, precision.Interf, recall.Interf, deltaTIR)
+
+
+
+
+
+
+%%
     case 'MA'
 
 %% Metadata for saving simulation data later
@@ -91,7 +229,7 @@ TestSignalParameters.speakerIds = ...
     ["0251M", "0652M", "1462F", "2035F", "2277F", ...
      "3575F", "5694M", "7176M", "7729M", "7976F"];
 TestSignalParameters.twoSpeakerVariety = true;
-TestSignalParameters.targetAngles = [90, 0, -30];%[-90, -15, 0, 30, 60];
+TestSignalParameters.targetAngles = [-90, -15, 0, 30, 60];
 TestSignalParameters.nSpeakers = 2;
 
 hrtf = SOFAload('HRIR_KEMAR_DV0001_4.sofa',[5 2],'R');
@@ -158,7 +296,8 @@ for iSp = 1:nSpeakerCombos
         SimulationData{iSp, jAn}.signalIndices = ...
             1:length(inputMixedSignal{iSp, jAn});
 
-        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime);
+        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, ...
+            estProcTime, nSignals, elapsedTime);
     end
 end
 
@@ -175,13 +314,15 @@ for iSp = 1:nSpeakerCombos
     for jAn = 1:nAnglePerms
 
         iSignal = iSignal + 1;
-        fprintf('SimulationData Evaluating signal %1i of %1i\n\n', iSignal, nSignals);
+        fprintf('SimulationData Evaluating signal %1i of %1i\n\n', ...
+            iSignal, nSignals);
         tic
 
         [maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}] = ...
             extractAppliedMask(SimulationData{iSp,jAn}, nBands);
 
-        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime);
+        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, ...
+            estProcTime, nSignals, elapsedTime);
     end
 end
 
@@ -248,13 +389,6 @@ for iSp = 1:nSpeakerCombos
             maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
             ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn});
 
-        if Plotting
-            plotIbmGlimpses(maskAppliedTarget{iSp,jAn}, maskAppliedInterf{iSp,jAn}, ...
-                ibmTarget{iSp,jAn}, ibmInterf{iSp,jAn}, inputTargetSignal{iSp,jAn}, ...
-                inputInterfSignal{iSp,jAn}, SimulationData{iSp,jAn}, timeVec, ...
-                AlgorithmParameters.Gammatone.samplingRateHz);
-        end
-
         % compute separate enhanced signals for TIR improvement calculation
         [outputTargetSignal_H{iSp,jAn}, outputInterfSignal_H{iSp,jAn}] = ...
             hagermanMethod('pre-calc', anglePermutations(jAn,1), ...
@@ -266,46 +400,12 @@ for iSp = 1:nSpeakerCombos
             inputTargetSignal{iSp,jAn}, inputInterfSignal{iSp,jAn}, ...
             outputTargetSignal_H{iSp,jAn}, outputInterfSignal_H{iSp,jAn});
 
-%         % compute TF gray mask TIR improvement
-%         [outputTargetSubbandSignals_H, ~] = subbandDecompositionBinaural(...
-%             outputTargetSignal_H{iSp,jAn}, AlgorithmStates);
-%         [outputInterfSubbandSignals_H, ~] = subbandDecompositionBinaural(...
-%             outputInterfSignal_H{iSp,jAn}, AlgorithmStates);
-% 
-%         outputTir{iSp,jAn}.L = computeTimeFreqTir(outputTargetSubbandSignals_H.L, ...
-%             outputInterfSubbandSignals_H.L, samplingRateHz, nBands);
-%         outputTir{iSp,jAn}.R = computeTimeFreqTir(outputTargetSubbandSignals_H.R, ...
-%             outputInterfSubbandSignals_H.R, samplingRateHz, nBands);
-
-        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, estProcTime, nSignals, elapsedTime);
+        [estProcTime, elapsedTime] = estimateRemainingTime(iSignal, ...
+            estProcTime, nSignals, elapsedTime);
     end
 end
 
-
-%% Evaluation evaluation
-
-evaluationPlots(speakerCombinations, anglePermutations, precision, recall, deltaTIR_H);
-
-
-%% Play signals
-
-if Play
-    box1 = msgbox('Play original signal (Ensure volume is adequately set)');
-    waitfor(box1);
-    soundsc(inputMixedSignal{iSp,jAn}, samplingRateHz);
-    box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
-        ' section of script (adjusting filter variables if necessary)']);
-    waitfor(box2);
-    soundsc(outputMixedSignal{iSp,jAn}, samplingRateHz);
-end
-
-
 %% Save simulation data
-
-% audiowrite(['testInput','.wav'], mixedSignal, ...
-%     AlgorithmParameters.Gammatone.samplingRateHz);
-% audiowrite(['testJeffrey','.wav'], enhancedMixedSignal, ...
-%     AlgorithmParameters.Gammatone.samplingRateHz);
 
 tic
 filename = string(dateString+'_signal_data.mat');
@@ -330,11 +430,15 @@ save(filename,...
 'MetaData', '-v7.3')
 toc
 
+
+
+
+
+
+
 %%
     case 'DAGA'
-%%
-%% DAGA
-%%
+
 %% Generate test signal (DAGA)
 
 % DAGA: target 0 degrees, interferer 60 degrees
@@ -417,6 +521,7 @@ plotDAGAresults(evalMixed, evalTarget, evalInterf, ...
     mixedSignal, inputTargetSignal, inputInterfSignal, ...
     dataMixed, dataTarget, dataInterf, AlgorithmParameters, timeVec)
 
+if Play
 %% Play mixed signals
 box1 = msgbox('Play original signal (Ensure volume is adequately set)');
 waitfor(box1);
@@ -443,6 +548,7 @@ box2 = msgbox(['Play resynthesized signal. To replay, just rerun last' ...
     ' section of script (adjusting filter variables if necessary)']);
 waitfor(box2);
 soundsc(enhancedSignalInterf, AlgorithmParameters.Gammatone.samplingRateHz);
+end
 
 %% Save simulation data
 
@@ -591,17 +697,21 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     hold on;
     for iBand = 1:nBands%7
         scatter(timeVec(targetSampleIndices.L{iBand}), ...
-            1e-3.*evaluation.p0SearchRangeFreqVector((evaluation.targetp0DetectedIndexVectors.L{iBand})), ...
+            1e-3.*evaluation.p0SearchRangeFreqVector((...
+            evaluation.targetp0DetectedIndexVectors.L{iBand})), ...
             10, 'green','filled');
         scatter(timeVec(interfSampleIndices.L{iBand}), ...
-            1e-3.*evaluation.p0SearchRangeFreqVector((evaluation.interfp0DetectedIndexVectors.L{iBand})), ...
+            1e-3.*evaluation.p0SearchRangeFreqVector((...
+            evaluation.interfp0DetectedIndexVectors.L{iBand})), ...
             10, 'red','filled');
 
         scatter(timeVec(targetSampleIndices.R{iBand}), ...
-            1e-3.*evaluation.p0SearchRangeFreqVector((evaluation.targetp0DetectedIndexVectors.R{iBand})), ...
+            1e-3.*evaluation.p0SearchRangeFreqVector((...
+            evaluation.targetp0DetectedIndexVectors.R{iBand})), ...
             10, 'green','filled');
         scatter(timeVec(interfSampleIndices.R{iBand}), ...
-            1e-3.*evaluation.p0SearchRangeFreqVector((evaluation.interfp0DetectedIndexVectors.R{iBand})), ...
+            1e-3.*evaluation.p0SearchRangeFreqVector((...
+            evaluation.interfp0DetectedIndexVectors.R{iBand})), ...
             10, 'red','filled');
         legend('target glimpses','interferer glimpses')
     end
@@ -617,10 +727,12 @@ function evaluation = evaluateAlgorithm(p0DetectedIndexVectors, ...
     hold on;
     for iBand = 1:nBands%7
         scatter(timeVec(logical(p0DetectedIndexVectors.L{iBand})), ...
-            1e-3.*evaluation.p0SearchRangeFreqVector(nonzeros(p0DetectedIndexVectors.L{iBand})), ...
+            1e-3.*evaluation.p0SearchRangeFreqVector(...
+            nonzeros(p0DetectedIndexVectors.L{iBand})), ...
             10, 'green','filled');
         scatter(timeVec(logical(p0DetectedIndexVectors.R{iBand})), ...
-            1e-3.*evaluation.p0SearchRangeFreqVector(nonzeros(p0DetectedIndexVectors.R{iBand})), ...
+            1e-3.*evaluation.p0SearchRangeFreqVector(...
+            nonzeros(p0DetectedIndexVectors.R{iBand})), ...
             10, 'green','filled');
         legend('periodic glimpses')
     end

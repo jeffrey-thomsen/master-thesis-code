@@ -31,6 +31,7 @@ function [AlgorithmStates, nBands] = AlgorithmStatesConstructor(AlgorithmParamet
     States.instFreqPreviousValue = 0;
     % combined binaural processing
     BinauralStates.ivsPreviousValue = 0;
+    
     %% generate separate set for each subband and channel
 
     L.GammatoneStates = GammatoneStates;

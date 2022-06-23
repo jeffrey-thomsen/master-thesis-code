@@ -1,3 +1,25 @@
+% Generate test signals for the different publications and unit tests of
+% the Thomsen2022 speech enhancement algorithm
+%
+% Input:
+% TestSignalParameters - struct containing information about how to
+% generate the test signals
+% hrtf - HRTF in SOFA format, loaded with SOFAload function of the MATLAB
+% SOFA API
+%
+% Output:
+% testSignal - binaural test signal or cell struct of test signals
+% targetSignal - binaural target signal or cell struct of multiple
+% interfSignal - binaural interferer signal or cell struct of multiple
+% fsHRTF - sampling rate of the HRTF
+% testSignalHagerman - binaural test signal with phase inverted interferer
+% or cell struct of multiple (only ouput for 'Battery' and 'DEMO' test
+% signal types)
+% anglePermutations - matrix containing the DOA combinations of target and
+% interferer speakers used for test signal generation (only output for
+% 'Battery' test signal type)
+% speakerCombinations - matrix containing the IDs of speech signals used
+% for test signal generation (only output for 'Battery' test signal type)
 function [testSignal, targetSignal, interfSignal, fsHrtf, ...
   testSignalHagerman, anglePermutations, speakerCombinations] = ...
   testSignalGenerator(TestSignalParameters, hrtf)
@@ -29,6 +51,50 @@ switch TestSignalParameters.testSignalType
     
         testSignal = rand(nSamples,2)-0.5; % default placeholder for now
     
+    case 'DEMO'
+         % load clean speech signals
+         % read parameters
+        doaDeg = TestSignalParameters.targetAngles;
+        
+        speakerId = TestSignalParameters.speakerIds;
+           
+        [targetSignal, fsTarget] = audioread(strcat(speakerId(1), '.flac'));
+        [interfSignal, fsInterf] = audioread(strcat(speakerId(2), '.flac'));
+
+        % adjust sampling rate to HRTF
+        targetSignal = resample(targetSignal, fsHrtf, fsTarget);
+        interfSignal = resample(interfSignal, fsHrtf, fsInterf);
+
+         % equalize lengths
+        if length(targetSignal) > length(interfSignal)
+            targetSignal = targetSignal(1:length(interfSignal));
+        elseif length(targetSignal) < length(interfSignal)
+            interfSignal = interfSignal(1:length(targetSignal));
+        end
+
+        % convolve with HRTF at different incidence angles
+        targetSignal = SOFAspat(targetSignal, hrtf, doaDeg(1), 0);
+        interfSignal = SOFAspat(interfSignal, hrtf, doaDeg(2), 0);
+        
+        % equalize levels - Target-to-interferer energy ratio 0dB
+        targetSignal = targetSignal / std(targetSignal(:));
+        interfSignal = interfSignal / std(interfSignal(:));
+        
+        % add and normalize test signal
+        testSignal = targetSignal + interfSignal;
+        testSignalHagerman = targetSignal - interfSignal;
+
+        scalingFactorCandidate(1) = max(abs(testSignal),[],'all');
+        scalingFactorCandidate(2) = max(abs(testSignalHagerman),[],'all');
+        scalingFactorCandidate(3) = max(abs(targetSignal),[],'all');
+        scalingFactorCandidate(4) = max(abs(interfSignal),[],'all');
+        scalingFactor = max(scalingFactorCandidate);
+        
+        testSignal  = testSignal ./scalingFactor;
+        testSignalHagerman = testSignalHagerman ./ scalingFactor;
+        targetSignal = targetSignal./scalingFactor;
+        interfSignal = interfSignal./scalingFactor;
+    
     case 'DAGA'       
     
         % load clean speech signals
@@ -55,11 +121,11 @@ switch TestSignalParameters.testSignalType
         interfSignal = interfSignal / std(interfSignal(:));
         
         % add and normalize test signal
-        mixedSignal = targetSignal + interfSignal;
+        testSignal = targetSignal + interfSignal;
         
-        scalingFactor = max(abs(mixedSignal),[],'all');
+        scalingFactor = max(abs(testSignal),[],'all');
         
-        testSignal  = mixedSignal ./scalingFactor;
+        testSignal  = testSignal ./scalingFactor;
         targetSignal = targetSignal./scalingFactor;
         interfSignal = interfSignal./scalingFactor;
 

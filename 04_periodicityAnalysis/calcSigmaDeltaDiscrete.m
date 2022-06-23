@@ -21,7 +21,7 @@ function [sigma, delta, paddingFIFO] = calcSigmaDeltaDiscrete(subbandSignal, ...
     % indices of corresponding p0 candidate values 
     p0CandidateIndexVectorReP0SearchRange = ...
         nonzeros(p0CandidateIndexVector);
-        % p0CandidateIndexVector(p0CandidateIndexVectorReSignalSamples);
+
     % map indices to p0 candidate values (in samples)
     p0CandidateValueVector = p0SearchRangeSamplesVector(p0CandidateIndexVectorReP0SearchRange);
     

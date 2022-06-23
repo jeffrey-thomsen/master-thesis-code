@@ -10,8 +10,8 @@
 % periodic samples within each subband signal and their respective detected
 % period
 % azimuthDegCells -  cells containing DOA estimate values for each subband
-% cfrDesired, sigmaDesired, deltaDesired - cells containing CFR, Sigma and
-% Delta values of detected periodic subband samples
+% sigmaDesired, deltaDesired - cells containing Sigma and Delta values of 
+% detected periodic subband samples
 % AlgorithmParameters - struct containing parametric information for the
 % simulation
 %
@@ -25,7 +25,7 @@
 % harmonic enhancement
 function [subbandSignal, targetSampleIndices, interfererSampleIndices] = ...
   harmonicEnhancement(subbandSignal, iBand, ivsMask, ...
-  p0DetectedIndexVectors, azimuthDegCells, cfrDesired, sigmaDesired, ...
+  p0DetectedIndexVectors, azimuthDegCells, sigmaDesired, ...
   deltaDesired, AlgorithmParameters)
 
     %% remove all samples (respective azimuth estimates) for which no 

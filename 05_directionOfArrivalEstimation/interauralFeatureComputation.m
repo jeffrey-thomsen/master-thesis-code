@@ -57,8 +57,6 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
         
         % % interaural level difference, eq. 5 in Dietz (2011)
         ildDb = 20*log10(abs(subbandSignalLp.L) ./ abs(subbandSignalLp.R));
-        % % max(sig,1e-4) avoids division by zero
-        %     20.*log10(max(subbandSignalLp.L,1e-4) ./ max(subbandSignalLp.L,1e-4));
         
         %% ITF
         itf = subbandSignal.L .* conj(subbandSignal.R);
@@ -66,12 +64,9 @@ function [ipdCells, ivsCells, ildCells, AlgorithmStates, ipdDisambiguatedLogical
         %% IVS
         [ivsMask, States.Binaural] = calcIvs(itf, tauS, samplingRateHz, ...
             AlgorithmParameters.ivsThreshold, States.Binaural);
-%         ivsMask = true(size(ivsMask));
 
         %% IPD
         ipdRad = angle(itf);
-        % test for equality: !!!
-        % ipd_lp = angle(lowpass(outp.itf,a)); % Dietz2011 lowpass function
         [ipdRad, States.Binaural.ipdLP] = ...
             firstOrderLowPass(ipdRad, States.Binaural.ipdLP, AlgorithmParameters, tauS);
         
