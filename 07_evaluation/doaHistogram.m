@@ -18,6 +18,6 @@ function [] = doaHistogram(varargin)
     xticks([-90 -60 -30 0 30 60 90])
 %     ylim([0 0.25])
     grid on
-    set(gca,'FontSize',14);
+    set(gca,'FontSize',12);
 
 end

@@ -4,6 +4,7 @@ clear
 %% Fetch DOA Data
 
 %% DOA histograms general
+
 % tic
 % 
 % % dateString = '2022-05-27_02-55_DOA'; % CFR0, IVS0, full DOA
@@ -72,6 +73,7 @@ doaHistogram_subplots;
 clear SimulationData
 toc
 
+clear subplot
 %% Fetch data for rest of plots
 
 % tic
@@ -132,21 +134,22 @@ ThreshNo = load('2022-05-29_23-03_meta_eval_data.mat');
 displayMeanStd(ThreshNo.precisionTarget, ThreshNo.recallTarget,...
     ThreshNo.precisionInterf, ThreshNo.recallInterf, ...
     ThreshNo.F1Target, ThreshNo.F1Interf, ThreshNo.deltaSNR_H)
-%% Precision+recall Hisograms+Heatmaps
+
+%% Precision+recall 
+
+% Hisograms+Heat maps
+
 plotDOAHistHeat(ThreshYes.precisionTarget,ThreshYes.precisionInterf,ThreshYes.recallTarget,ThreshYes.recallInterf)
 plotDOAHistHeat(ThreshNo.precisionTarget,ThreshNo.precisionInterf,ThreshNo.recallTarget,ThreshNo.recallInterf)
+clear subplot
+% Comparison box plots
 
-%% Comparison boxplots
 figure;
 hold on
-% boxchart(-0.3*ones(900,1),ThreshYes.F1Target(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(0.3*ones(900,1),ThreshNo.F1Target(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
 boxchart(1.7*ones(900,1),ThreshYes.precisionTarget(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
 boxchart(2.3*ones(900,1),ThreshNo.precisionTarget(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
 boxchart(3.7*ones(900,1),ThreshYes.recallTarget(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
 boxchart(4.3*ones(900,1),ThreshNo.recallTarget(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
-% boxchart(5.7*ones(900,1),ThreshYes.F1Interf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(6.3*ones(900,1),ThreshNo.F1Interf(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
 boxchart(7.7*ones(900,1),ThreshYes.precisionInterf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
 boxchart(8.3*ones(900,1),ThreshNo.precisionInterf(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
 boxchart(9.7*ones(900,1),ThreshYes.recallInterf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
@@ -156,25 +159,6 @@ xticks([2, 4, 8, 10])
 xticklabels({'Target precision', 'Target recall', 'Interferer precision', 'Interferer recall'})
 ylabel('Rate (1)')
 
-%
-% figure;
-% hold on
-% yyaxis left
-% ylabel('Rate (1)')
-% boxchart(0*ones(900,1),ThreshNo.F1Target(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(1.6*ones(900,1),ThreshNo.precisionTarget(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(3.2*ones(900,1),ThreshNo.recallTarget(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(6*ones(900,1),ThreshNo.F1Interf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(7.6*ones(900,1),ThreshNo.precisionInterf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% boxchart(9.2*ones(900,1),ThreshNo.recallInterf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-% yyaxis right
-% ylabel('\DeltaTIR (dB)')
-% boxchart(13*ones(900,1),ThreshNo.deltaSNR_H(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
-% 
-% xticks([0, 1.6, 3.2, 6, 7.6, 9.2, 13])
-% xticklabels({'F1 target','Precision target', 'Recall target', ...
-%     'F1 interf','Precision interf', 'Recall interf','\DeltaTIR'})
-%
 
 %% TIR improvement
 
@@ -202,7 +186,7 @@ datasetHeatmap(ThreshNo.deltaSNR_H,'\DeltaTIR (dB)',[-5 10]);
 %     title('\DeltaTIR');
 set(gca,'FontSize',11);
 
-% Comparison boxplot
+% Comparison box plot
 figure;
 hold on
 boxchart(-0.3*ones(900,1),ThreshYes.deltaSNR_H(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
@@ -215,17 +199,17 @@ ylabel('\DeltaTIR (dB)')
 
 %% TF plots
 
-centerFreqsHz = [73.2236407563322	107.651956490872	...
-    146.004400858780	188.728244811384	236.321739102815	...
-    289.339924951948	348.401107001765	414.194064064606	...
-    487.486081745890	569.131900623784	660.083684339571	...
-    761.402123847844	874.268807325650	1000.00000000000	...
-    1140.06199459580	1296.08821142304	1469.89824752649	...
-    1663.51909705164	1879.20879030116	2119.48272716367	...
-    2387.14301201846	2685.31113222345	3017.46436128696	...
-    3387.47631126158	3799.66210728721	4258.82871111428	...
-    4770.33098048645	5340.13411815414	5974.88323880703	...
-    6681.98086522375];
+% centerFreqsHz = [73.2236407563322	107.651956490872	...
+%     146.004400858780	188.728244811384	236.321739102815	...
+%     289.339924951948	348.401107001765	414.194064064606	...
+%     487.486081745890	569.131900623784	660.083684339571	...
+%     761.402123847844	874.268807325650	1000.00000000000	...
+%     1140.06199459580	1296.08821142304	1469.89824752649	...
+%     1663.51909705164	1879.20879030116	2119.48272716367	...
+%     2387.14301201846	2685.31113222345	3017.46436128696	...
+%     3387.47631126158	3799.66210728721	4258.82871111428	...
+%     4770.33098048645	5340.13411815414	5974.88323880703	...
+%     6681.98086522375];
 
 
 % deltaTir_TF = TF_TIR_improvement(inputTargetSignal{1}, inputInterfSignal{1}, ...
@@ -257,7 +241,7 @@ controlIndices = controlIndices(1:2:45,:);
 controlIndices = controlIndices(:,[2,3,9,11,13,15]);
 controlIndices = controlIndices(:);
 
-%% Symmetry
+%% Symmetry precision, recall + TIR box plots
 
 figure;
 hold on
@@ -283,22 +267,7 @@ xticks([0])
 xticklabels({''})
 ylabel('\DeltaTIR (dB)')
 
-%% Random period
-
-figure;
-hold on
-boxchart(1.7*ones(138,1),ControlThreshNo.precisionTarget(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-boxchart(2.3*ones(138,1),ControlRandom.precisionTarget(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
-boxchart(3.7*ones(138,1),ControlThreshNo.recallTarget(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-boxchart(4.3*ones(138,1),ControlRandom.recallTarget(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
-boxchart(7.7*ones(138,1),ControlThreshNo.precisionInterf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-boxchart(8.3*ones(138,1),ControlRandom.precisionInterf(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
-boxchart(9.7*ones(138,1),ControlThreshNo.recallInterf(:),'BoxFaceColor','#0072BD','MarkerColor','#0072BD')
-boxchart(10.3*ones(138,1),ControlRandom.recallInterf(:),'BoxFaceColor','#D95319','MarkerColor','#D95319')
-legend('p_0 estimation','random p_0 assignment')
-xticks([2, 4, 8, 10])
-xticklabels({'Target precision', 'Target recall', 'Interferer precision', 'Interferer recall'})
-ylabel('Rate (1)')
+%% Random period TIR box plot
 
 figure;
 hold on
@@ -309,7 +278,7 @@ xticks([0])
 xticklabels({''})
 ylabel('\DeltaTIR (dB)')
 
-%% Enhancement, cancellation
+%% Enhancement, cancellation comparison TIR box plot
 
 figure;
 hold on
